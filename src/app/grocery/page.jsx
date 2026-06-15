@@ -5,6 +5,10 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { buildGroceryList, loadAllVisibleMeals, loadPlanForUser } from '@/lib/dataStore';
 
+function price(value) {
+  return `€${Number(value || 0).toFixed(2)}`;
+}
+
 function GroceryContent({ user }) {
   const [meals, setMeals] = useState([]);
   const [plan, setPlan] = useState(null);
@@ -34,13 +38,20 @@ function GroceryContent({ user }) {
   }, [user.id]);
 
   const list = useMemo(() => (plan ? buildGroceryList(meals, plan) : []), [meals, plan]);
+  const plannedMeals = useMemo(() => {
+    if (!plan) return [];
+    const byId = new Map(meals.map((meal) => [meal.id, meal]));
+    return Object.values(plan.slots || {}).map((id) => byId.get(id)).filter(Boolean);
+  }, [meals, plan]);
+  const weekTotal = plannedMeals.reduce((sum, meal) => sum + Number(meal.price || 0), 0);
+
   const grouped = list.reduce((acc, item) => {
     (acc[item.category] ||= []).push(item);
     return acc;
   }, {});
 
   function copy() {
-    const text = list.map((i) => `${i.name} — ${i.quantity} ${i.unit}`).join('\n');
+    const text = list.map((item) => `${item.name} — ${item.quantity} ${item.unit}`).join('\n');
     navigator.clipboard?.writeText(text);
   }
 
@@ -54,7 +65,22 @@ function GroceryContent({ user }) {
       {error && <div className="notice error-notice">{error}</div>}
       {loading ? <div className="card">Loading grocery list…</div> : null}
 
-      <div className="grocery-list">
+      <div className="grocery-summary panel-soft">
+        <div>
+          <span>Planned meals</span>
+          <strong>{plannedMeals.length}</strong>
+        </div>
+        <div>
+          <span>Combined items</span>
+          <strong>{list.length}</strong>
+        </div>
+        <div>
+          <span>Estimated week total</span>
+          <strong>{price(weekTotal)}</strong>
+        </div>
+      </div>
+
+      <div className="grocery-list clean-grocery-list">
         {Object.entries(grouped).map(([category, items]) => (
           <section className="card category" key={category}>
             <h3>{category}</h3>
