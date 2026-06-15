@@ -50,6 +50,8 @@ function normalizeMeal(row) {
     user_id: row.user_id,
     title: row.title || '',
     description: row.description || '',
+    instructions: row.instructions || '',
+    video_url: row.video_url || '',
     meal_type: row.meal_type || 'both',
     prep_time: Number(row.prep_time || 20),
     servings: Number(row.servings || 2),
@@ -164,6 +166,8 @@ export async function saveMealForUser(user, meal) {
     user_id: user.id,
     title: meal.title,
     description: meal.description || '',
+    instructions: meal.instructions || '',
+    video_url: meal.video_url || '',
     meal_type: meal.meal_type || 'both',
     prep_time: Number(meal.prep_time || 20),
     servings: Number(meal.servings || 2),
@@ -171,11 +175,16 @@ export async function saveMealForUser(user, meal) {
     tags: cleanTags(meal.tags),
     is_public: Boolean(meal.is_public),
     updated_at: new Date().toISOString(),
-  };
+};
 
   let saved;
 
-  if (meal.id && !String(meal.id).startsWith('seed-') && !String(meal.id).startsWith('public-')) {
+  if (
+  meal.id &&
+  !String(meal.id).startsWith('seed-') &&
+  !String(meal.id).startsWith('public-') &&
+  !String(meal.id).startsWith('starter-public-')
+) {
     const data = await throwIfError(
       await supabase
         .from('meals')
