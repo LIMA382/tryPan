@@ -2,11 +2,18 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(url || 'https://example.supabase.co', anonKey || 'example-key');
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export function hasSupabaseEnv() {
-  return Boolean(url && anonKey);
+  return Boolean(
+    supabaseUrl &&
+    supabaseAnonKey &&
+    supabaseUrl.startsWith('https://') &&
+    supabaseUrl.includes('.supabase.co')
+  );
 }
+
+export const supabase = hasSupabaseEnv()
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
