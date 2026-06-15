@@ -9,10 +9,10 @@ export default function AppNav({ user }) {
   const router = useRouter();
 
   const links = [
+    ['Public meals', '/browse'],
     ['Planner', '/planner'],
     ['My Meals', '/meals'],
     ['Grocery List', '/grocery'],
-    ['Browse', '/browse'],
   ];
 
   const displayName = user?.user_metadata?.display_name || user?.user_metadata?.username || user?.email;
@@ -26,18 +26,16 @@ export default function AppNav({ user }) {
 
   return (
     <div className="page-shell">
-      <nav className="nav">
+      <nav className="nav nav-clean">
         <Link className="logo" href="/">
           try<span>Pan</span>
         </Link>
 
         <div className="nav-links">
-          <Link className={`nav-link ${pathname === '/browse' ? 'active' : ''}`} href="/browse">
-            Public meals
-          </Link>
+          {links.map(([label, href]) => {
+            if (!user && href !== '/browse') return null;
 
-          {user &&
-            links.slice(0, 3).map(([label, href]) => (
+            return (
               <Link
                 key={href}
                 className={`nav-link ${pathname === href ? 'active' : ''}`}
@@ -45,19 +43,16 @@ export default function AppNav({ user }) {
               >
                 {label}
               </Link>
-            ))}
+            );
+          })}
 
           {user ? (
             <>
-              <span className="signed-in-pill">{displayName}</span>
-              <button className="soft-btn" onClick={signOut}>
-                Sign out
-              </button>
+              <Link className="signed-in-pill" href="/account">{displayName}</Link>
+              <button className="soft-btn" onClick={signOut}>Sign out</button>
             </>
           ) : (
-            <Link className="primary-btn" href="/login">
-              Log in
-            </Link>
+            <Link className="primary-btn" href="/login">Log in</Link>
           )}
         </div>
       </nav>
