@@ -1,165 +1,177 @@
 'use client';
 
 import { useState } from 'react';
-import { saveMealForUser } from '@/lib/dataStore';
 
-const emptyIngredient = { name: '', quantity: 1, unit: '', category: 'Produce' };
+const CATEGORIES = ['Produce', 'Protein', 'Dairy', 'Pantry', 'Frozen', 'Spices', 'Bakery', 'Other'];
 
-export default function MealForm({ user, initial, onSaved, onCancel }) {
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [meal, setMeal] = useState(
-    initial || {
-      title: '',
-      description: '',
-      meal_type: 'both',
-      prep_time: 20,
-      servings: 2,
-      tags: ['Healthy'],
-      is_public: false,
-      ingredients: [{ ...emptyIngredient }],
-    }
-  );
+const emptyIngredient = {
+  name: '',
+  quantity: 1,
+  unit: '',
+  category: 'Other',
+};
 
-  function setField(key, value) {
-    setMeal((m) => ({ ...m, [key]: value }));
+export default function MealForm({ initialMeal, onSave, onCancel, saving }) {
+  const [meal, setMeal] = useState(() => ({
+    title: initialMeal?.title || '',
+    description: initialMeal?.description || '',
+    meal_type: initialMeal?.meal_type || 'both',
+    prep_time: initialMeal?.prep_time || 20,
+    servings: initialMeal?.servings || 2,
+    price: initialMeal?.price || 0,
+    tags: Array.isArray(initialMeal?.tags) ? initialMeal.tags.join(', ') : '',
+    is_public: Boolean(initialMeal?.is_public),
+    ingredients: initialMeal?.ingredients?.length
+      ? initialMeal.ingredients.map((ing) => ({
+          name: ing.name || '',
+          quantity: ing.quantity || 1,
+          unit: ing.unit || '',
+          category: ing.category || 'Other',
+        }))
+      : [{ ...emptyIngredient }],
+  }));
+
+  function update(field, value) {
+    setMeal((current) => ({
+      ...current,
+      [field]: value,
+    }));
   }
 
-  function setIngredient(index, key, value) {
-    setMeal((m) => ({
-      ...m,
-      ingredients: m.ingredients.map((ing, i) => (i === index ? { ...ing, [key]: value } : ing)),
+  function updateIngredient(index, field, value) {
+    setMeal((current) => ({
+      ...current,
+      ingredients: current.ingredients.map((ing, i) => (
+        i === index ? { ...ing, [field]: value } : ing
+      )),
     }));
   }
 
   function addIngredient() {
-    setMeal((m) => ({ ...m, ingredients: [...m.ingredients, { ...emptyIngredient }] }));
+    setMeal((current) => ({
+      ...current,
+      ingredients: [...current.ingredients, { ...emptyIngredient }],
+    }));
   }
 
   function removeIngredient(index) {
-    setMeal((m) => ({ ...m, ingredients: m.ingredients.filter((_, i) => i !== index) }));
+    setMeal((current) => ({
+      ...current,
+      ingredients: current.ingredients.filter((_, i) => i !== index),
+    }));
   }
 
-  async function submit(e) {
-    e.preventDefault();
-    setSaving(true);
-    setError('');
+  function submit(event) {
+    event.preventDefault();
 
-    try {
-      const normalized = {
-        ...meal,
-        tags: Array.isArray(meal.tags)
-          ? meal.tags
-          : String(meal.tags || '')
-              .split(',')
-              .map((x) => x.trim())
-              .filter(Boolean),
-        ingredients: (meal.ingredients || []).filter((i) => String(i.name || '').trim()),
-      };
-
-      const saved = await saveMealForUser(user, normalized);
-      onSaved?.(saved);
-    } catch (err) {
-      setError(err.message || 'Could not save meal.');
-    } finally {
-      setSaving(false);
-    }
+    onSave({
+      ...initialMeal,
+      ...meal,
+      prep_time: Number(meal.prep_time || 0),
+      servings: Number(meal.servings || 1),
+      price: Number(meal.price || 0),
+      tags: String(meal.tags || '')
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean),
+      ingredients: meal.ingredients
+        .filter((ing) => ing.name.trim())
+        .map((ing) => ({
+          ...ing,
+          quantity: Number(ing.quantity || 0),
+        })),
+    });
   }
 
   return (
-    <form className="preview-card" onSubmit={submit}>
-      {error && <div className="notice error-notice">{error}</div>}
-
+    <form className="card" onSubmit={submit}>
       <div className="form-grid">
         <div className="field">
           <label>Meal name</label>
-          <input required value={meal.title} onChange={(e) => setField('title', e.target.value)} placeholder="Chicken rice bowl" />
+          <input required value={meal.title} onChange={(event) => update('title', event.target.value)} placeholder="Chicken rice bowl" />
         </div>
 
         <div className="field">
           <label>Meal type</label>
-          <select value={meal.meal_type} onChange={(e) => setField('meal_type', e.target.value)}>
+          <select value={meal.meal_type} onChange={(event) => update('meal_type', event.target.value)}>
+            <option value="both">Lunch + dinner</option>
             <option value="lunch">Lunch</option>
             <option value="dinner">Dinner</option>
-            <option value="both">Both</option>
           </select>
         </div>
 
         <div className="field">
           <label>Prep time</label>
-          <input type="number" value={meal.prep_time} onChange={(e) => setField('prep_time', Number(e.target.value))} />
+          <input type="number" min="0" value={meal.prep_time} onChange={(event) => update('prep_time', event.target.value)} />
         </div>
 
         <div className="field">
           <label>Servings</label>
-          <input type="number" value={meal.servings} onChange={(e) => setField('servings', Number(e.target.value))} />
+          <input type="number" min="1" value={meal.servings} onChange={(event) => update('servings', event.target.value)} />
+        </div>
+
+        <div className="field">
+          <label>Estimated price (€)</label>
+          <input type="number" min="0" step="0.01" value={meal.price} onChange={(event) => update('price', event.target.value)} />
+        </div>
+
+        <div className="field">
+          <label>Tags</label>
+          <input value={meal.tags} onChange={(event) => update('tags', event.target.value)} placeholder="Quick, Healthy, Budget" />
         </div>
 
         <div className="field full">
           <label>Description</label>
-          <textarea value={meal.description || ''} onChange={(e) => setField('description', e.target.value)} />
+          <textarea value={meal.description} onChange={(event) => update('description', event.target.value)} placeholder="A short note about this meal…" />
         </div>
 
-        <div className="field">
-          <label>Tags, comma separated</label>
-          <input value={(Array.isArray(meal.tags) ? meal.tags : []).join(', ')} onChange={(e) => setField('tags', e.target.value)} />
-        </div>
-
-        <div className="field">
+        <div className="field full">
           <label>Visibility</label>
-          <select value={meal.is_public ? 'public' : 'private'} onChange={(e) => setField('is_public', e.target.value === 'public')}>
-            <option value="private">Private</option>
-            <option value="public">Public</option>
+          <select value={meal.is_public ? 'public' : 'private'} onChange={(event) => update('is_public', event.target.value === 'public')}>
+            <option value="private">Private — only me</option>
+            <option value="public">Public — visible in Browse</option>
           </select>
         </div>
       </div>
 
-      <h3 style={{ marginTop: 24 }}>Ingredients</h3>
+      <div className="section-header" style={{ marginTop: 24 }}>
+        <h3>Ingredients</h3>
+        <button type="button" className="soft-btn" onClick={addIngredient}>Add ingredient</button>
+      </div>
 
-      <div className="grid" style={{ marginTop: 10 }}>
-        {(meal.ingredients || []).map((ing, index) => (
-          <div className="ingredient-row" key={ing.id || index}>
+      <div className="grid" style={{ marginTop: 12 }}>
+        {meal.ingredients.map((ingredient, index) => (
+          <div className="ingredient-row" key={index}>
             <div className="field">
               <label>Name</label>
-              <input value={ing.name} onChange={(e) => setIngredient(index, 'name', e.target.value)} placeholder="Rice" />
+              <input value={ingredient.name} onChange={(event) => updateIngredient(index, 'name', event.target.value)} placeholder="Rice" />
             </div>
 
             <div className="field">
               <label>Qty</label>
-              <input type="number" value={ing.quantity} onChange={(e) => setIngredient(index, 'quantity', Number(e.target.value))} />
+              <input type="number" min="0" step="0.01" value={ingredient.quantity} onChange={(event) => updateIngredient(index, 'quantity', event.target.value)} />
             </div>
 
             <div className="field">
               <label>Unit</label>
-              <input value={ing.unit} onChange={(e) => setIngredient(index, 'unit', e.target.value)} placeholder="g" />
+              <input value={ingredient.unit} onChange={(event) => updateIngredient(index, 'unit', event.target.value)} placeholder="g" />
             </div>
 
             <div className="field">
               <label>Category</label>
-              <select value={ing.category} onChange={(e) => setIngredient(index, 'category', e.target.value)}>
-                {['Produce', 'Protein', 'Dairy', 'Pantry', 'Frozen', 'Spices', 'Bakery', 'Other'].map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
+              <select value={ingredient.category} onChange={(event) => updateIngredient(index, 'category', event.target.value)}>
+                {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
               </select>
             </div>
 
-            <button type="button" className="danger-btn" onClick={() => removeIngredient(index)}>
-              Remove
-            </button>
+            <button type="button" className="danger-btn" onClick={() => removeIngredient(index)}>Remove</button>
           </div>
         ))}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginTop: 18, flexWrap: 'wrap' }}>
-        <button type="button" className="soft-btn" onClick={addIngredient}>
-          Add ingredient
-        </button>
+      <div className="hero-actions">
         <button className="primary-btn" disabled={saving}>{saving ? 'Saving…' : 'Save meal'}</button>
-        {onCancel && (
-          <button type="button" className="soft-btn" onClick={onCancel}>
-            Cancel
-          </button>
-        )}
+        <button type="button" className="soft-btn" onClick={onCancel}>Cancel</button>
       </div>
     </form>
   );
