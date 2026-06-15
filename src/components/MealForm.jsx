@@ -15,6 +15,8 @@ export default function MealForm({ initialMeal, onSave, onCancel, saving }) {
   const [meal, setMeal] = useState(() => ({
     title: initialMeal?.title || '',
     description: initialMeal?.description || '',
+    instructions: initialMeal?.instructions || '',
+    video_url: initialMeal?.video_url || '',
     meal_type: initialMeal?.meal_type || 'both',
     prep_time: initialMeal?.prep_time || 20,
     servings: initialMeal?.servings || 2,
@@ -41,9 +43,9 @@ export default function MealForm({ initialMeal, onSave, onCancel, saving }) {
   function updateIngredient(index, field, value) {
     setMeal((current) => ({
       ...current,
-      ingredients: current.ingredients.map((ing, i) => (
-        i === index ? { ...ing, [field]: value } : ing
-      )),
+      ingredients: current.ingredients.map((ingredient, i) =>
+        i === index ? { ...ingredient, [field]: value } : ingredient
+      ),
     }));
   }
 
@@ -75,20 +77,25 @@ export default function MealForm({ initialMeal, onSave, onCancel, saving }) {
         .map((x) => x.trim())
         .filter(Boolean),
       ingredients: meal.ingredients
-        .filter((ing) => ing.name.trim())
-        .map((ing) => ({
-          ...ing,
-          quantity: Number(ing.quantity || 0),
+        .filter((ingredient) => ingredient.name.trim())
+        .map((ingredient) => ({
+          ...ingredient,
+          quantity: Number(ingredient.quantity || 0),
         })),
     });
   }
 
   return (
-    <form className="card" onSubmit={submit}>
+    <form className="card meal-form" onSubmit={submit}>
       <div className="form-grid">
         <div className="field">
           <label>Meal name</label>
-          <input required value={meal.title} onChange={(event) => update('title', event.target.value)} placeholder="Chicken rice bowl" />
+          <input
+            required
+            value={meal.title}
+            onChange={(event) => update('title', event.target.value)}
+            placeholder="Chicken rice bowl"
+          />
         </div>
 
         <div className="field">
@@ -102,27 +109,69 @@ export default function MealForm({ initialMeal, onSave, onCancel, saving }) {
 
         <div className="field">
           <label>Prep time</label>
-          <input type="number" min="0" value={meal.prep_time} onChange={(event) => update('prep_time', event.target.value)} />
+          <input
+            type="number"
+            min="0"
+            value={meal.prep_time}
+            onChange={(event) => update('prep_time', event.target.value)}
+          />
         </div>
 
         <div className="field">
           <label>Servings</label>
-          <input type="number" min="1" value={meal.servings} onChange={(event) => update('servings', event.target.value)} />
+          <input
+            type="number"
+            min="1"
+            value={meal.servings}
+            onChange={(event) => update('servings', event.target.value)}
+          />
         </div>
 
         <div className="field">
           <label>Estimated price (€)</label>
-          <input type="number" min="0" step="0.01" value={meal.price} onChange={(event) => update('price', event.target.value)} />
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={meal.price}
+            onChange={(event) => update('price', event.target.value)}
+          />
         </div>
 
         <div className="field">
           <label>Tags</label>
-          <input value={meal.tags} onChange={(event) => update('tags', event.target.value)} placeholder="Quick, Healthy, Budget" />
+          <input
+            value={meal.tags}
+            onChange={(event) => update('tags', event.target.value)}
+            placeholder="Quick, Healthy, Budget"
+          />
         </div>
 
         <div className="field full">
           <label>Description</label>
-          <textarea value={meal.description} onChange={(event) => update('description', event.target.value)} placeholder="A short note about this meal…" />
+          <textarea
+            value={meal.description}
+            onChange={(event) => update('description', event.target.value)}
+            placeholder="A short note about this meal…"
+          />
+        </div>
+
+        <div className="field full">
+          <label>Instructions optional</label>
+          <textarea
+            value={meal.instructions}
+            onChange={(event) => update('instructions', event.target.value)}
+            placeholder="Write the cooking steps here, or leave empty if you already know the recipe."
+          />
+        </div>
+
+        <div className="field full">
+          <label>Video link optional</label>
+          <input
+            value={meal.video_url}
+            onChange={(event) => update('video_url', event.target.value)}
+            placeholder="YouTube, TikTok, Instagram, blog link…"
+          />
         </div>
 
         <div className="field full">
@@ -134,44 +183,74 @@ export default function MealForm({ initialMeal, onSave, onCancel, saving }) {
         </div>
       </div>
 
-      <div className="section-header" style={{ marginTop: 24 }}>
+      <div className="section-header ingredients-header">
         <h3>Ingredients</h3>
-        <button type="button" className="soft-btn" onClick={addIngredient}>Add ingredient</button>
+        <button type="button" className="soft-btn" onClick={addIngredient}>
+          Add ingredient
+        </button>
       </div>
 
-      <div className="grid" style={{ marginTop: 12 }}>
+      <div className="grid ingredients-grid">
         {meal.ingredients.map((ingredient, index) => (
           <div className="ingredient-row" key={index}>
             <div className="field">
               <label>Name</label>
-              <input value={ingredient.name} onChange={(event) => updateIngredient(index, 'name', event.target.value)} placeholder="Rice" />
+              <input
+                value={ingredient.name}
+                onChange={(event) => updateIngredient(index, 'name', event.target.value)}
+                placeholder="Rice"
+              />
             </div>
 
             <div className="field">
               <label>Qty</label>
-              <input type="number" min="0" step="0.01" value={ingredient.quantity} onChange={(event) => updateIngredient(index, 'quantity', event.target.value)} />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={ingredient.quantity}
+                onChange={(event) => updateIngredient(index, 'quantity', event.target.value)}
+              />
             </div>
 
             <div className="field">
               <label>Unit</label>
-              <input value={ingredient.unit} onChange={(event) => updateIngredient(index, 'unit', event.target.value)} placeholder="g" />
+              <input
+                value={ingredient.unit}
+                onChange={(event) => updateIngredient(index, 'unit', event.target.value)}
+                placeholder="g"
+              />
             </div>
 
             <div className="field">
               <label>Category</label>
-              <select value={ingredient.category} onChange={(event) => updateIngredient(index, 'category', event.target.value)}>
-                {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+              <select
+                value={ingredient.category}
+                onChange={(event) => updateIngredient(index, 'category', event.target.value)}
+              >
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
               </select>
             </div>
 
-            <button type="button" className="danger-btn" onClick={() => removeIngredient(index)}>Remove</button>
+            <button type="button" className="danger-btn" onClick={() => removeIngredient(index)}>
+              Remove
+            </button>
           </div>
         ))}
       </div>
 
       <div className="hero-actions">
-        <button className="primary-btn" disabled={saving}>{saving ? 'Saving…' : 'Save meal'}</button>
-        <button type="button" className="soft-btn" onClick={onCancel}>Cancel</button>
+        <button className="primary-btn" disabled={saving}>
+          {saving ? 'Saving…' : initialMeal?.id ? 'Save changes' : 'Save meal'}
+        </button>
+
+        <button type="button" className="soft-btn" onClick={onCancel}>
+          Cancel
+        </button>
       </div>
     </form>
   );
