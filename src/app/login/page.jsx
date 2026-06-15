@@ -5,54 +5,92 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase, hasSupabaseEnv } from '@/lib/supabaseClient';
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export default function LoginPage() {
   const router = useRouter();
 
   const [mode, setMode] = useState('signin');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
 
   const supabaseReady = hasSupabaseEnv() && supabase;
+  const isSignup = mode === 'signup';
 
   async function submit(event) {
     event.preventDefault();
     setMessage('');
+
+    const cleanEmail = email.trim();
+    const cleanUsername = username.trim();
 
     if (!supabaseReady) {
       setMessage('Supabase is not connected. Check Vercel environment variables and redeploy.');
       return;
     }
 
-    if (!email || !password) {
-      setMessage('Enter your email and password.');
+    if (isSignup && cleanUsername.length < 2) {
+      setMessage('Choose a username with at least 2 characters.');
+      return;
+    }
+
+    if (!cleanEmail) {
+      setMessage('Enter your email.');
+      return;
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      setMessage('Enter a valid email address.');
+      return;
+    }
+
+    if (!password) {
+      setMessage('Enter your password.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setMessage('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (isSignup && password !== confirmPassword) {
+      setMessage('Passwords do not match.');
       return;
     }
 
     setBusy(true);
 
     try {
-      const result =
-        mode === 'signup'
-          ? await supabase.auth.signUp({
-              email,
-              password,
-              options: {
-                emailRedirectTo: `${window.location.origin}/planner`,
+      const result = isSignup
+        ? await supabase.auth.signUp({
+            email: cleanEmail,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/planner`,
+              data: {
+                display_name: cleanUsername,
+                username: cleanUsername,
               },
-            })
-          : await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
+            },
+          })
+        : await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
 
       if (result.error) {
         setMessage(result.error.message);
         return;
       }
 
-      if (mode === 'signup' && !result.data?.session) {
+      if (isSignup && !result.data?.session) {
         setMessage('Account created. Check your email to confirm your account, then log in.');
         return;
       }
@@ -82,9 +120,7 @@ export default function LoginPage() {
         },
       });
 
-      if (error) {
-        setMessage(error.message);
-      }
+      if (error) setMessage(error.message);
     } finally {
       setBusy(false);
     }
@@ -98,26 +134,32 @@ export default function LoginPage() {
         </Link>
 
         <div className="eyebrow">
-          {mode === 'signin' ? 'Welcome back' : 'Create account'}
+          {isSignup ? 'Create account' : 'Welcome back'}
         </div>
 
         <h2>
-          {mode === 'signin'
-            ? 'Log in to your meal planner.'
-            : 'Start saving your meals.'}
+          {isSignup ? 'Start saving your meals.' : 'Log in to your meal planner.'}
         </h2>
 
-        {!supabaseReady && (
-          <div className="notice">
-            Supabase is not connected. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel, then redeploy.
+        {message && <div className="notice">{message}</div>}
+
+        {isSignup && (
+          <div className="field">
+            <label>Username</label>
+            <input
+              required
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="maria cooks"
+              autoComplete="nickname"
+            />
           </div>
         )}
-
-        {message && <div className="notice">{message}</div>}
 
         <div className="field">
           <label>Email</label>
           <input
+            required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
@@ -129,20 +171,37 @@ export default function LoginPage() {
         <div className="field">
           <label>Password</label>
           <input
+            required
+            minLength={6}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="••••••••"
-            autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+            autoComplete={isSignup ? 'new-password' : 'current-password'}
             type="password"
           />
         </div>
 
+        {isSignup && (
+          <div className="field">
+            <label>Confirm password</label>
+            <input
+              required
+              minLength={6}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+              type="password"
+            />
+          </div>
+        )}
+
         <button
           className="primary-btn"
           style={{ width: '100%', justifyContent: 'center', marginTop: 14 }}
-          disabled={busy}
+          disabled={busy || !supabaseReady}
         >
-          {busy ? 'Please wait…' : mode === 'signin' ? 'Log in' : 'Sign up'}
+          {busy ? 'Please wait…' : isSignup ? 'Sign up' : 'Log in'}
         </button>
 
         <button
@@ -150,7 +209,7 @@ export default function LoginPage() {
           className="soft-btn"
           style={{ width: '100%', marginTop: 10 }}
           onClick={google}
-          disabled={busy}
+          disabled={busy || !supabaseReady}
         >
           Continue with Google
         </button>
@@ -161,12 +220,10 @@ export default function LoginPage() {
           style={{ marginTop: 12 }}
           onClick={() => {
             setMessage('');
-            setMode(mode === 'signin' ? 'signup' : 'signin');
+            setMode(isSignup ? 'signin' : 'signup');
           }}
         >
-          {mode === 'signin'
-            ? 'Need an account? Sign up'
-            : 'Already have an account? Log in'}
+          {isSignup ? 'Already have an account? Log in' : 'Need an account? Sign up'}
         </button>
       </form>
     </main>
