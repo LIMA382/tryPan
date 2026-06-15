@@ -5,24 +5,22 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import MealCard from '@/components/MealCard';
 import MealForm from '@/components/MealForm';
-import { deleteMealForUser, loadMyMeals } from '@/lib/dataStore';
+import { deleteMealForUser, loadMyMeals, saveMealForUser } from '@/lib/dataStore';
 
 function MealsContent({ user }) {
   const [meals, setMeals] = useState([]);
-  const [editing, setEditing] = useState(null);
+  const [editingMeal, setEditingMeal] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState('');
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  async function refresh() {
+  async function load() {
     setLoading(true);
     setError('');
 
     try {
       setMeals(await loadMyMeals(user));
-      setShowForm(false);
-      setEditing(null);
     } catch (err) {
       setError(err.message || 'Could not load meals.');
     } finally {
@@ -31,61 +29,109 @@ function MealsContent({ user }) {
   }
 
   useEffect(() => {
-    refresh();
+    load();
   }, [user.id]);
 
-  async function removeMeal(id) {
-    if (!confirm('Delete this meal?')) return;
-    await deleteMealForUser(user, id);
-    await refresh();
+  function startNewMeal() {
+    setEditingMeal(null);
+    setShowForm(true);
   }
 
-  const shown = meals.filter(
-    (m) =>
-      !filter ||
-      m.title.toLowerCase().includes(filter.toLowerCase()) ||
-      (m.tags || []).join(' ').toLowerCase().includes(filter.toLowerCase()) ||
-      m.meal_type.toLowerCase().includes(filter.toLowerCase())
-  );
+  function startEditMeal(meal) {
+    setEditingMeal(meal);
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function save(meal) {
+    setSaving(true);
+    setError('');
+
+    try {
+      await saveMealForUser(user, meal);
+      setShowForm(false);
+      setEditingMeal(null);
+      await load();
+    } catch (err) {
+      setError(err.message || 'Could not save meal.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function remove(id) {
+    const ok = window.confirm('Delete this meal?');
+    if (!ok) return;
+
+    setError('');
+
+    try {
+      await deleteMealForUser(user, id);
+      await load();
+    } catch (err) {
+      setError(err.message || 'Could not delete meal.');
+    }
+  }
 
   return (
     <AppFrame
       user={user}
       title="My meals"
-      subtitle="Your personal database of meals you already know how to cook."
-      action={<button className="primary-btn" onClick={() => setShowForm(true)}>Add meal</button>}
+      subtitle="Meals you actually know how to cook. Add prices, ingredients, instructions, and optional recipe videos."
+      action={
+        <button className="primary-btn" onClick={startNewMeal}>
+          Add meal
+        </button>
+      }
     >
       {error && <div className="notice error-notice">{error}</div>}
 
-      {showForm || editing ? (
-        <MealForm user={user} initial={editing} onSaved={refresh} onCancel={() => { setShowForm(false); setEditing(null); }} />
-      ) : (
-        <>
-          <div className="toolbar">
-            <input placeholder="Search meals, tags, lunch, dinner…" value={filter} onChange={(e) => setFilter(e.target.value)} />
-          </div>
+      {showForm && (
+        <div className="page-transition form-section">
+          <MealForm
+            initialMeal={editingMeal}
+            onSave={save}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingMeal(null);
+            }}
+            saving={saving}
+          />
+        </div>
+      )}
 
-          {loading ? <div className="card">Loading meals…</div> : null}
+      {loading ? <div className="card">Loading meals…</div> : null}
 
-          {!loading && !shown.length ? (
-            <div className="card empty-state">No meals yet. Add your first meal to start planning.</div>
-          ) : null}
+      {!loading && !showForm && meals.length === 0 ? (
+        <div className="card empty-state-card">
+          <h3>No meals yet</h3>
+          <p>Add the first meal you already know how to cook.</p>
+          <button className="primary-btn" onClick={startNewMeal}>
+            Add your first meal
+          </button>
+        </div>
+      ) : null}
 
-          <div className="grid meal-grid">
-            {shown.map((meal) => (
-              <MealCard
-                key={meal.id}
-                meal={meal}
-                actions={
-                  <>
-                    <button className="soft-btn" onClick={() => setEditing(meal)}>Edit</button>
-                    <button className="danger-btn" onClick={() => removeMeal(meal.id)}>Delete</button>
-                  </>
-                }
-              />
-            ))}
-          </div>
-        </>
+      {!loading && (
+        <div className="grid meal-grid meals-library">
+          {meals.map((meal) => (
+            <MealCard
+              key={meal.id}
+              meal={meal}
+              actions={
+                <div className="meal-card-actions">
+                  <button className="soft-btn" onClick={() => startEditMeal(meal)}>
+                    Edit
+                  </button>
+
+                  <button className="danger-btn" onClick={() => remove(meal.id)}>
+                    Delete
+                  </button>
+                </div>
+              }
+            />
+          ))}
+        </div>
       )}
     </AppFrame>
   );
