@@ -53,6 +53,7 @@ function normalizeMeal(row) {
     meal_type: row.meal_type || 'both',
     prep_time: Number(row.prep_time || 20),
     servings: Number(row.servings || 2),
+    price: Number(row.price || 0),
     tags: cleanTags(row.tags || []),
     is_public: Boolean(row.is_public),
     creator: row.profiles?.display_name || row.creator || null,
@@ -152,9 +153,8 @@ export async function loadPublicMeals(user = null) {
 
   if (publicRows.length) return publicRows;
 
-  return publicMeals.map((meal, index) =>
-    normalizeSeedMeal({ ...meal, id: `starter-public-${index}` }, index)
-  );
+  // Starter library: shown to everyone until real users publish meals.
+  return publicMeals.map((meal, index) => normalizeSeedMeal({ ...meal, id: `starter-public-${index}` }, index));
 }
 
 export async function saveMealForUser(user, meal) {
@@ -167,6 +167,7 @@ export async function saveMealForUser(user, meal) {
     meal_type: meal.meal_type || 'both',
     prep_time: Number(meal.prep_time || 20),
     servings: Number(meal.servings || 2),
+    price: Number(meal.price || 0),
     tags: cleanTags(meal.tags),
     is_public: Boolean(meal.is_public),
     updated_at: new Date().toISOString(),
@@ -174,12 +175,7 @@ export async function saveMealForUser(user, meal) {
 
   let saved;
 
-  if (
-    meal.id &&
-    !String(meal.id).startsWith('seed-') &&
-    !String(meal.id).startsWith('public-') &&
-    !String(meal.id).startsWith('starter-public-')
-  ) {
+  if (meal.id && !String(meal.id).startsWith('seed-') && !String(meal.id).startsWith('public-')) {
     const data = await throwIfError(
       await supabase
         .from('meals')
@@ -189,7 +185,6 @@ export async function saveMealForUser(user, meal) {
         .select()
         .single()
     );
-
     saved = data;
   } else {
     const data = await throwIfError(
@@ -199,16 +194,10 @@ export async function saveMealForUser(user, meal) {
         .select()
         .single()
     );
-
     saved = data;
   }
 
-  await throwIfError(
-    await supabase
-      .from('meal_ingredients')
-      .delete()
-      .eq('meal_id', saved.id)
-  );
+  await throwIfError(await supabase.from('meal_ingredients').delete().eq('meal_id', saved.id));
 
   const ingredients = (meal.ingredients || [])
     .filter((ing) => String(ing.name || '').trim())
@@ -234,13 +223,7 @@ export async function deleteMealForUser(user, id) {
     return;
   }
 
-  await throwIfError(
-    await supabase
-      .from('meals')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-  );
+  await throwIfError(await supabase.from('meals').delete().eq('id', id).eq('user_id', user.id));
 }
 
 export async function copyPublicMealForUser(user, meal) {
@@ -339,5 +322,6 @@ export async function setPlannedMealForUser(user, plan, day, slot, mealId) {
     },
   };
 
+  if (isDemo()) localSavePlan(next);
   return next;
 }
