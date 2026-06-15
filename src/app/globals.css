@@ -188,3 +188,158 @@ button:hover, .primary-btn:hover, .soft-btn:hover, .nav-link:hover { transform: 
   .float-list { position: static; width: auto; margin-top: 16px; }
   .filter-login { margin-left: 0; }
 }
+
+/* smoother nav active pill */
+.nav-tabs {
+  position: relative;
+  isolation: isolate;
+}
+
+.nav-indicator {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  border-radius: 999px;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 12px 30px rgba(30,47,30,.08);
+  z-index: 0;
+  transition:
+    transform .34s cubic-bezier(.22, 1, .36, 1),
+    width .34s cubic-bezier(.22, 1, .36, 1);
+}
+
+.nav-tab {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-tab.active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* smoother page and card motion */
+.page-transition {
+  animation: pageIn .46s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes pageIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(.995);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.card,
+.panel-soft,
+.preview-card,
+.meal-card,
+.clean-slot,
+.drag-meal {
+  transition:
+    transform .22s cubic-bezier(.22, 1, .36, 1),
+    box-shadow .22s cubic-bezier(.22, 1, .36, 1),
+    background .22s ease,
+    border-color .22s ease;
+}
+
+/* cleaner planner spacing */
+.planner-clean {
+  grid-template-columns: minmax(190px, 220px) minmax(520px, 1fr) minmax(210px, 240px);
+  gap: 20px;
+}
+
+.calendar-clean {
+  padding: 20px;
+}
+
+.clean-day-row {
+  margin-bottom: 12px;
+}
+
+.clean-slot {
+  min-height: 104px;
+  padding: 14px;
+}
+
+.clean-slot:hover {
+  transform: translateY(-2px);
+  border-color: rgba(47,111,69,.42);
+  background: rgba(255,255,255,.72);
+}
+
+.clean-meal:hover {
+  transform: translateY(-2px);
+}
+
+.clean-meal.selected {
+  transform: translateY(-2px);
+}
+
+.empty-slot {
+  margin-top: 8px;
+}
+
+/* meal cards */
+.meal-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meal-actions {
+  margin-top: 14px;
+}
+
+.video-link {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 12px;
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: var(--ink);
+  color: white;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.instructions-preview {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.form-section {
+  margin-bottom: 18px;
+}
+
+.meal-form {
+  margin-bottom: 18px;
+}
+
+.ingredients-header {
+  margin-top: 24px;
+}
+
+.ingredients-grid {
+  margin-top: 12px;
+}
+
+.empty-state-card {
+  display: grid;
+  gap: 12px;
+  place-items: start;
+}
+
+@media (max-width: 1080px) {
+  .planner-clean {
+    grid-template-columns: 1fr;
+  }
+}
