@@ -1,7 +1,7 @@
 'use client';
 
 import { supabase, hasSupabaseEnv } from './supabaseClient';
-import { seedMeals } from './demoData';
+import { seedMeals, publicMeals } from './demoData';
 import {
   getMeals as localGetMeals,
   saveMeal as localSaveMeal,
@@ -19,11 +19,14 @@ import { getMonday } from './date';
 export { buildGroceryList };
 
 function isDemo() {
-  return !hasSupabaseEnv();
+  return false;
 }
 
 function cleanTags(tags) {
-  if (Array.isArray(tags)) return tags.map(String).map((x) => x.trim()).filter(Boolean);
+  if (Array.isArray(tags)) {
+    return tags.map(String).map((x) => x.trim()).filter(Boolean);
+  }
+
   return String(tags || '')
     .split(',')
     .map((x) => x.trim())
@@ -64,7 +67,13 @@ function normalizeSeedMeal(seed, index) {
     tags: cleanTags(seed.tags),
     ingredients: (seed.ingredients || []).map((ing, i) =>
       Array.isArray(ing)
-        ? { id: `seed-${index}-ing-${i}`, name: ing[0], quantity: ing[1], unit: ing[2], category: ing[3] }
+        ? {
+            id: `seed-${index}-ing-${i}`,
+            name: ing[0],
+            quantity: ing[1],
+            unit: ing[2],
+            category: ing[3],
+          }
         : ing
     ),
   };
@@ -87,7 +96,12 @@ async function seedAccountIfEmpty(user) {
 
   for (const [index, seed] of seedMeals.entries()) {
     const normalized = normalizeSeedMeal(seed, index);
-    await saveMealForUser(user, { ...normalized, id: undefined, is_public: Boolean(seed.is_public) });
+
+    await saveMealForUser(user, {
+      ...normalized,
+      id: undefined,
+      is_public: Boolean(seed.is_public),
+    });
   }
 }
 
@@ -121,19 +135,26 @@ export async function loadAllVisibleMeals(user) {
   return (data || []).map(normalizeMeal);
 }
 
-export async function loadPublicMeals(user) {
-  if (isDemo()) return localGetPublicMeals();
+export async function loadPublicMeals(user = null) {
+  if (!hasSupabaseEnv() || !supabase) return localGetPublicMeals();
 
-  const query = supabase
-    .from('meals')
-    .select('*, meal_ingredients(*)')
-    .eq('is_public', true)
-    .order('created_at', { ascending: false });
+  const data = await throwIfError(
+    await supabase
+      .from('meals')
+      .select('*, meal_ingredients(*)')
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+  );
 
-  const data = await throwIfError(await query);
-  return (data || [])
+  const publicRows = (data || [])
     .filter((meal) => meal.user_id !== user?.id)
     .map(normalizeMeal);
+
+  if (publicRows.length) return publicRows;
+
+  return publicMeals.map((meal, index) =>
+    normalizeSeedMeal({ ...meal, id: `starter-public-${index}` }, index)
+  );
 }
 
 export async function saveMealForUser(user, meal) {
@@ -153,7 +174,12 @@ export async function saveMealForUser(user, meal) {
 
   let saved;
 
-  if (meal.id && !String(meal.id).startsWith('seed-') && !String(meal.id).startsWith('public-')) {
+  if (
+    meal.id &&
+    !String(meal.id).startsWith('seed-') &&
+    !String(meal.id).startsWith('public-') &&
+    !String(meal.id).startsWith('starter-public-')
+  ) {
     const data = await throwIfError(
       await supabase
         .from('meals')
@@ -163,6 +189,7 @@ export async function saveMealForUser(user, meal) {
         .select()
         .single()
     );
+
     saved = data;
   } else {
     const data = await throwIfError(
@@ -172,10 +199,16 @@ export async function saveMealForUser(user, meal) {
         .select()
         .single()
     );
+
     saved = data;
   }
 
-  await throwIfError(await supabase.from('meal_ingredients').delete().eq('meal_id', saved.id));
+  await throwIfError(
+    await supabase
+      .from('meal_ingredients')
+      .delete()
+      .eq('meal_id', saved.id)
+  );
 
   const ingredients = (meal.ingredients || [])
     .filter((ing) => String(ing.name || '').trim())
@@ -201,7 +234,13 @@ export async function deleteMealForUser(user, id) {
     return;
   }
 
-  await throwIfError(await supabase.from('meals').delete().eq('id', id).eq('user_id', user.id));
+  await throwIfError(
+    await supabase
+      .from('meals')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+  );
 }
 
 export async function copyPublicMealForUser(user, meal) {
@@ -300,6 +339,5 @@ export async function setPlannedMealForUser(user, plan, day, slot, mealId) {
     },
   };
 
-  if (isDemo()) localSavePlan(next);
   return next;
 }
