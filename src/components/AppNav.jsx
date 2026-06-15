@@ -15,10 +15,10 @@ export default function AppNav({ user }) {
     ['Browse', '/browse'],
   ];
 
+  const displayName = user?.user_metadata?.display_name || user?.user_metadata?.username || user?.email;
+
   async function signOut() {
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
+    if (supabase) await supabase.auth.signOut();
 
     router.push('/');
     router.refresh();
@@ -32,8 +32,12 @@ export default function AppNav({ user }) {
         </Link>
 
         <div className="nav-links">
+          <Link className={`nav-link ${pathname === '/browse' ? 'active' : ''}`} href="/browse">
+            Public meals
+          </Link>
+
           {user &&
-            links.map(([label, href]) => (
+            links.slice(0, 3).map(([label, href]) => (
               <Link
                 key={href}
                 className={`nav-link ${pathname === href ? 'active' : ''}`}
@@ -44,9 +48,12 @@ export default function AppNav({ user }) {
             ))}
 
           {user ? (
-            <button className="soft-btn" onClick={signOut}>
-              Sign out
-            </button>
+            <>
+              <span className="signed-in-pill">{displayName}</span>
+              <button className="soft-btn" onClick={signOut}>
+                Sign out
+              </button>
+            </>
           ) : (
             <Link className="primary-btn" href="/login">
               Log in
