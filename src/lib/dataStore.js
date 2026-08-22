@@ -25,6 +25,27 @@ function validUuidOrNull(value) {
     : null;
 }
 
+const PERSONAL_CATALOG_KEY = 'trypan-personal-ingredient-catalog-v1';
+
+function loadPersonalCatalog() {
+  if (typeof window === 'undefined') return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(PERSONAL_CATALOG_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function savePersonalCatalog(item) {
+  if (typeof window === 'undefined') return item;
+  const current = loadPersonalCatalog();
+  const key = `${item.region}:${String(item.name || '').trim().toLowerCase()}`;
+  const next = [item, ...current.filter((entry) => `${entry.region}:${String(entry.name || '').trim().toLowerCase()}` !== key)];
+  window.localStorage.setItem(PERSONAL_CATALOG_KEY, JSON.stringify(next.slice(0, 250)));
+  return item;
+}
+
 function cleanUnit(unit) {
   return String(unit || '').trim().toLowerCase();
 }
@@ -401,7 +422,8 @@ export async function loadIngredientCatalog(region = 'pt', query = '') {
   const cleanRegion = normalizeRegion(region);
   const needle = String(query || '').trim().toLowerCase();
 
-  let catalog = starterForRegion(cleanRegion);
+  const personalCatalog = loadPersonalCatalog().filter((item) => normalizeRegion(item.region) === cleanRegion);
+  let catalog = mergeCatalogRows(cleanRegion, personalCatalog);
 
   if (hasSupabaseEnv() && supabase) {
     try {
@@ -411,7 +433,7 @@ export async function loadIngredientCatalog(region = 'pt', query = '') {
         .eq('region', cleanRegion)
         .order('name', { ascending: true });
 
-      if (!error) catalog = mergeCatalogRows(cleanRegion, data || []);
+      if (!error) catalog = mergeCatalogRows(cleanRegion, [...(data || []), ...personalCatalog]);
     } catch (_) {
       catalog = starterForRegion(cleanRegion);
     }
@@ -439,7 +461,7 @@ export async function createCatalogIngredient(user, ingredient) {
   if (!payload.name) throw new Error('Ingredient name is required.');
 
   if (!hasSupabaseEnv() || !supabase) {
-    return normalizeCatalogIngredient({ ...payload, id: `local-${payload.region}-${slugify(payload.name)}` });
+    return savePersonalCatalog(normalizeCatalogIngredient({ ...payload, id: `local-${payload.region}-${slugify(payload.name)}` }));
   }
 
   const { data, error } = await supabase
@@ -448,7 +470,9 @@ export async function createCatalogIngredient(user, ingredient) {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    return savePersonalCatalog(normalizeCatalogIngredient({ ...payload, id: `local-${payload.region}-${slugify(payload.name)}` }));
+  }
   return normalizeCatalogIngredient(data);
 }
 
