@@ -143,7 +143,7 @@ function AccountContent({ user }) {
           <h3>Spending and meal analytics</h3>
           <p>Analytics now live in their own section instead of being buried inside the pantry page.</p>
         </div>
-        <Link className="soft-btn" href="/spending">Open spending</Link>
+        <Link className="soft-btn" href="/plan/budget">Open spending</Link>
         <button type="button" className="danger-btn" onClick={signOut}>Sign out</button>
       </section>
     </AppFrame>
@@ -153,3 +153,4 @@ function AccountContent({ user }) {
 export default function AccountPage() {
   return <AuthGate>{(user) => <AccountContent user={user} />}</AuthGate>;
 }
+
