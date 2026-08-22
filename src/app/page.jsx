@@ -19,7 +19,7 @@ export default function Home() {
         <section className="hero mobile-hero refined-hero">
           <div>
             <div className="eyebrow">Meal planning without the nightly decision spiral</div>
-            <h1>Stop deciding dinner from scratch every night.</h1>
+            <h1>Make dinner decisions effortless, every night.</h1>
             <p>
               tryPan helps you plan breakfast, lunch and dinner from meals you already know how to cook — then compares your plan with your pantry so you only shop for what is missing.
             </p>
@@ -73,3 +73,4 @@ export default function Home() {
     </>
   );
 }
+
