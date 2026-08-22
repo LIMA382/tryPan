@@ -26,7 +26,7 @@ export default function Home() {
 
             <div className="hero-actions">
               <Link className="primary-btn" href="/login">Start planning</Link>
-              <Link className="soft-btn" href="/browse">Browse public meals</Link>
+              <Link className="soft-btn" href="/discover">Discover recipes</Link>
             </div>
 
             <p className="mobile-install-note">
