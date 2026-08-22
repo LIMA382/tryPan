@@ -10,7 +10,7 @@ import { copyPublicMealForUser, loadPublicMeals } from '@/lib/dataStore';
 import { supabase, hasSupabaseEnv } from '@/lib/supabaseClient';
 import { motionTokens } from '@/lib/motion';
 
-const FILTERS = ['All', 'Quick', 'Cheap', 'Leftovers', 'Pantry', 'Vegetarian', 'High protein', 'Dinner', 'Lunch', 'Breakfast'];
+const FILTERS = ['All', 'Student picks', '15 minutes', 'Budget', 'Meal prep', 'Microwave', 'Vegetarian', 'High protein', 'Dinner', 'Lunch', 'Breakfast'];
 
 function BrowseSkeleton() {
   return (
@@ -73,9 +73,10 @@ export default function BrowsePage() {
     const needle = filter.toLowerCase();
     const query = search.trim().toLowerCase();
 
-    let list = filter === 'All'
-      ? meals
-      : meals.filter((meal) => {
+    let list = filter === 'All' ? meals : meals.filter((meal) => {
+          if (filter === 'Student picks') return meal.creator === 'tryPan Student Kitchen' || (meal.tags || []).includes('Student favourite');
+          if (filter === '15 minutes') return Number(meal.prep_time || 0) <= 15;
+          if (filter === 'Budget') return (meal.tags || []).includes('Budget') || Number(meal.price || 0) / Math.max(1, Number(meal.servings || 1)) <= 2.5;
           const tags = (meal.tags || []).join(' ').toLowerCase();
           return tags.includes(needle) || String(meal.meal_type || '').toLowerCase().includes(needle);
         });
@@ -112,9 +113,9 @@ export default function BrowsePage() {
       <main className={`page-shell browse-page page-transition ${!user ? 'guest-browse-page' : ''}`}>
         <section className="browse-hero-panel compact-browse-hero">
           <div>
-            <div className="eyebrow">Public meals</div>
-            <h1>{user ? 'Save public meals to your kitchen.' : 'Browse familiar meals before signing up.'}</h1>
-            <p>{user ? 'Open a meal, check the ingredients, then save the ones that fit your real week.' : 'Explore meals freely. When you want to save one or plan it, log in and add it to your kitchen.'}</p>
+            <div className="eyebrow">Discover recipes</div>
+            <h1>{user ? 'Find meals that fit student life.' : 'Find quick, affordable meals before signing up.'}</h1>
+            <p>{user ? 'Filter by budget, cooking time or meal prep, then add a recipe directly to your week.' : 'Explore practical student recipes freely. Log in when you want to save one or add it to your plan.'}</p>
           </div>
         </section>
 
