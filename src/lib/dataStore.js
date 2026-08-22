@@ -535,7 +535,11 @@ export async function loadMyMeals(user) {
 }
 
 export async function loadAllVisibleMeals(user) {
-  if (isDemo()) return localGetMeals();
+  if (isDemo()) {
+    const own = localGetMeals();
+    const ownTitles = new Set(own.map((meal) => meal.title.toLowerCase()));
+    return [...own, ...localGetPublicMeals().filter((meal) => !ownTitles.has(meal.title.toLowerCase()))];
+  }
 
   const data = await throwIfError(
     await supabase
@@ -545,7 +549,10 @@ export async function loadAllVisibleMeals(user) {
       .order('created_at', { ascending: false })
   );
 
-  return (data || []).map(normalizeMeal);
+  const visible = (data || []).map(normalizeMeal);
+  const existingTitles = new Set(visible.map((meal) => meal.title.toLowerCase()));
+  const curated = localGetPublicMeals().filter((meal) => !existingTitles.has(meal.title.toLowerCase()));
+  return [...visible, ...curated];
 }
 
 export async function loadPublicMeals(user = null) {
@@ -563,7 +570,9 @@ export async function loadPublicMeals(user = null) {
     .filter((meal) => meal.user_id !== user?.id)
     .map(normalizeMeal);
 
-  return publicRows;
+  const existingTitles = new Set(publicRows.map((meal) => meal.title.toLowerCase()));
+  const curated = localGetPublicMeals().filter((meal) => !existingTitles.has(meal.title.toLowerCase()));
+  return [...publicRows, ...curated];
 }
 
 export async function saveMealForUser(user, meal) {
