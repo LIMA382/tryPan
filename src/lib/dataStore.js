@@ -41,7 +41,7 @@ function savePersonalCatalog(item) {
   if (typeof window === 'undefined') return item;
   const current = loadPersonalCatalog();
   const key = `${item.region}:${String(item.name || '').trim().toLowerCase()}`;
-  const next = [item, ...current.filter((entry) => `${entry.region}:${String(entry.name || '').trim().toLowerCase()}` !== key)];
+  const next = [item, ...current.filter((entry) => entry.id !== item.id && `${entry.region}:${String(entry.name || '').trim().toLowerCase()}` !== key)];
   window.localStorage.setItem(PERSONAL_CATALOG_KEY, JSON.stringify(next.slice(0, 250)));
   return item;
 }
@@ -219,7 +219,7 @@ export function buildShoppingListFromPantry(meals, plan, pantryItems = []) {
 
 
 function isDemo() {
-  return false;
+  return !hasSupabaseEnv() || !supabase;
 }
 
 function cleanTags(tags) {
@@ -302,6 +302,7 @@ function normalizeCatalogIngredient(row) {
     price_unit: row.price_unit || row.default_unit || '',
     created_by: row.created_by || null,
     is_user_created: Boolean(row.is_user_created),
+    created_at: row.created_at || null,
   };
 }
 
@@ -324,7 +325,11 @@ function mergeCatalogRows(region, rows = []) {
     const item = normalizeCatalogIngredient(row);
     map.set(item.name.toLowerCase(), item);
   }
-  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  return Array.from(map.values()).sort((a, b) => {
+    if (a.is_user_created !== b.is_user_created) return a.is_user_created ? -1 : 1;
+    const recent = String(b.created_at || '').localeCompare(String(a.created_at || ''));
+    return recent || a.name.localeCompare(b.name);
+  });
 }
 
 async function seedAccountIfEmpty(user) {
@@ -473,7 +478,45 @@ export async function createCatalogIngredient(user, ingredient) {
   if (error) {
     return savePersonalCatalog(normalizeCatalogIngredient({ ...payload, id: `local-${payload.region}-${slugify(payload.name)}` }));
   }
-  return normalizeCatalogIngredient(data);
+  return savePersonalCatalog(normalizeCatalogIngredient(data));
+}
+
+export async function updateCatalogIngredient(user, ingredient) {
+  const payload = {
+    name: String(ingredient.name || '').trim(),
+    region: normalizeRegion(ingredient.region),
+    category: ingredient.category || 'Other',
+    default_unit: ingredient.default_unit || ingredient.unit || '',
+    estimated_price: Number(ingredient.estimated_price || 0),
+    price_unit: ingredient.price_unit || ingredient.default_unit || ingredient.unit || '',
+    created_by: ingredient.created_by || user?.id || null,
+    is_user_created: true,
+    created_at: ingredient.created_at || new Date().toISOString(),
+  };
+
+  if (!payload.name) throw new Error('Ingredient name is required.');
+
+  const localResult = normalizeCatalogIngredient({ ...payload, id: ingredient.id || `local-${payload.region}-${slugify(payload.name)}` });
+  if (!validUuidOrNull(ingredient.id) || !hasSupabaseEnv() || !supabase) {
+    return savePersonalCatalog(localResult);
+  }
+
+  const { data, error } = await supabase
+    .from('ingredient_catalog')
+    .update({
+      name: payload.name,
+      category: payload.category,
+      default_unit: payload.default_unit,
+      estimated_price: payload.estimated_price,
+      price_unit: payload.price_unit,
+    })
+    .eq('id', ingredient.id)
+    .eq('created_by', user.id)
+    .select()
+    .single();
+
+  if (error) return savePersonalCatalog(localResult);
+  return savePersonalCatalog(normalizeCatalogIngredient(data));
 }
 
 export async function loadMyMeals(user) {
