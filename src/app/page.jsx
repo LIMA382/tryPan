@@ -2,74 +2,55 @@ import InstallPrompt from '@/components/InstallPrompt';
 import Link from 'next/link';
 import AppNav from '@/components/AppNav';
 
-export default function Home() {
-  const days = [
-    ['Mon', 'Oats bowl', 'Chicken rice bowl', 'Tomato soup'],
-    ['Tue', 'Egg toast', 'Turkey wraps', 'Chickpea curry'],
-    ['Wed', 'Yogurt fruit', 'Greek salad bowl', 'Salmon pasta'],
-    ['Thu', 'Smoothie', 'Leftovers', 'Use-up pantry pasta'],
-  ];
+const week = [
+  ['Monday', 'Oats bowl', 'Chicken rice bowl', 'Tomato soup'],
+  ['Tuesday', 'Egg toast', 'Turkey wraps', 'Chickpea curry'],
+  ['Wednesday', 'Yogurt and fruit', 'Greek salad bowl', 'Salmon pasta'],
+  ['Thursday', 'Smoothie', 'Leftovers', 'Pantry pasta'],
+];
 
+export default function Home() {
   return (
     <>
       <InstallPrompt />
       <AppNav />
-
-      <main className="page-shell mobile-home-shell">
-        <section className="hero mobile-hero refined-hero">
-          <div>
-            <div className="eyebrow">Meal planning without the nightly decision spiral</div>
-            <h1>Make dinner decisions effortless, every night.</h1>
-            <p>
-              tryPan helps you plan breakfast, lunch and dinner from meals you already know how to cook — then compares your plan with your pantry so you only shop for what is missing.
-            </p>
-
-            <div className="hero-actions">
-              <Link className="primary-btn" href="/login">Start planning</Link>
-              <Link className="soft-btn" href="/browse">Browse public meals</Link>
-            </div>
-
-            <p className="mobile-install-note">
-              On iPhone, open Share → Add to Home Screen. On Android, tap Install when prompted.
-            </p>
-          </div>
-
-          <div className="preview-card phone-preview-card waste-preview-card">
-            <div className="preview-header">
-              <h2>This week, without the 6pm panic</h2>
-              <span className="badge">Pantry aware</span>
-            </div>
-
-            <div className="week-preview">
-              {days.map(([day, breakfast, lunch, dinner]) => (
-                <div className="day-preview mobile-day-preview" key={day}>
-                  <strong>{day}</strong>
-                  <div className="meal-chip">{breakfast}</div>
-                  <div className="meal-chip">{lunch}</div>
-                  <div className="meal-chip leftover-chip">{dinner}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="missing-preview">
-              <strong>Missing from pantry</strong>
-              <span>Tomatoes · 4</span>
-              <span>Greek yogurt · 500g</span>
-              <em>Already have rice, pasta and frozen peas.</em>
-            </div>
+      <main className="home-page">
+        <section className="home-intro">
+          <p className="home-kicker">Meal planning for ordinary weeks</p>
+          <h1>Make dinner decisions effortless, every night.</h1>
+          <p className="home-summary">Plan meals you already know, check what is in the pantry, and buy only what is missing.</p>
+          <div className="home-actions">
+            <Link className="home-primary-action" href="/login">Start planning</Link>
+            <Link className="home-text-action" href="/browse">See public meals</Link>
           </div>
         </section>
 
-        <section className="how mobile-how" aria-labelledby="how-heading">
-          <div className="section-heading full">
-            <h2 id="how-heading">A calmer way to plan the week</h2>
-            <p>Start from real life: familiar meals, leftovers, pantry stock and the groceries you actually need.</p>
+        <section className="home-demo" aria-labelledby="demo-heading">
+          <header>
+            <div><p className="home-section-label">A working week</p><h2 id="demo-heading">Your plan and pantry, together</h2></div>
+            <Link href="/planner">Open the planner</Link>
+          </header>
+          <div className="home-table-wrap">
+            <table>
+              <thead><tr><th>Day</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th></tr></thead>
+              <tbody>{week.map(([day, breakfast, lunch, dinner]) => <tr key={day}><th>{day}</th><td>{breakfast}</td><td>{lunch}</td><td>{dinner}</td></tr>)}</tbody>
+            </table>
           </div>
-          <div className="card step"><b>1</b><h3>Add meals you actually cook</h3><p>Save reliable meals, not endless recipes you may never make.</p></div>
-          <div className="card step"><b>2</b><h3>Plan around real days</h3><p>Put leftovers next to busy nights and keep breakfast, lunch and dinner visible.</p></div>
-          <div className="card step"><b>3</b><h3>Shop only what is missing</h3><p>Compare the plan with your pantry before you buy more food.</p></div>
+          <div className="home-pantry-status">
+            <strong>Shopping list</strong><span>Tomatoes, 4</span><span>Greek yogurt, 500 g</span><span className="home-have">Already in the pantry: rice, pasta and frozen peas</span>
+          </div>
+        </section>
+
+        <section className="home-process" aria-labelledby="process-heading">
+          <header><div><p className="home-section-label">How it works</p><h2 id="process-heading">A practical weekly routine</h2></div></header>
+          <ol>
+            <li><span>01</span><div><h3>Save your regular meals</h3><p>Keep the meals you actually cook in one useful list.</p></div></li>
+            <li><span>02</span><div><h3>Build the week</h3><p>Place quick dinners and leftovers where they fit your schedule.</p></div></li>
+            <li><span>03</span><div><h3>Check before shopping</h3><p>Compare ingredients with your pantry and buy the difference.</p></div></li>
+          </ol>
         </section>
       </main>
+      <footer className="home-footer"><span>tryPan</span><nav aria-label="Legal"><Link href="/terms">Terms</Link><Link href="/privacy">Privacy</Link></nav></footer>
     </>
   );
 }
