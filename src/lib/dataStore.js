@@ -18,6 +18,13 @@ import { getMonday } from './date';
 
 export { buildGroceryList };
 
+function validUuidOrNull(value) {
+  const candidate = String(value || '').trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    ? candidate
+    : null;
+}
+
 function cleanUnit(unit) {
   return String(unit || '').trim().toLowerCase();
 }
@@ -116,7 +123,7 @@ function buildNeededItems(meals, plan) {
       const unitKey = compatibleUnitKey(ing.unit);
       const key = `${identity}|${unitKey}|${ing.category || 'Other'}|${ing.unit || ''}`;
       const prev = totals.get(key) || {
-        ingredient_id: ing.ingredient_id || null,
+        ingredient_id: validUuidOrNull(ing.ingredient_id),
         name: ing.name,
         unit: ing.unit || '',
         quantity: 0,
@@ -496,7 +503,7 @@ export async function saveMealForUser(user, meal) {
   const ingredients = (meal.ingredients || [])
     .filter((ing) => String(ing.name || '').trim())
     .map((ing) => ({
-      ingredient_id: ing.ingredient_id && !String(ing.ingredient_id).startsWith('starter-') ? ing.ingredient_id : null,
+      ingredient_id: validUuidOrNull(ing.ingredient_id),
       name: String(ing.name || '').trim(),
       quantity: Number(ing.quantity || 0),
       unit: ing.unit || '',
@@ -782,7 +789,7 @@ function normalizePantryTrip(row) {
     item_count: Array.isArray(row.pantry_transaction_items) ? row.pantry_transaction_items.length : Number(row.item_count || 0),
     items: (row.pantry_transaction_items || []).map((item) => ({
       id: item.id,
-      ingredient_id: item.ingredient_id || null,
+      ingredient_id: validUuidOrNull(item.ingredient_id),
       name: item.name || '',
       quantity: Number(item.quantity || 0),
       unit: item.unit || '',
@@ -847,7 +854,7 @@ export async function savePantryItemForUser(user, item) {
 
   const payload = {
     user_id: user.id,
-    ingredient_id: item.ingredient_id && !String(item.ingredient_id).startsWith('starter-') ? item.ingredient_id : null,
+    ingredient_id: validUuidOrNull(item.ingredient_id),
     name: String(item.name || '').trim(),
     quantity: Number(item.quantity || 0),
     unit: item.unit || '',
@@ -897,7 +904,7 @@ export async function deletePantryItemForUser(user, id) {
 
 async function addToPantryItem(user, item) {
   const clean = {
-    ingredient_id: item.ingredient_id && !String(item.ingredient_id).startsWith('starter-') ? item.ingredient_id : null,
+    ingredient_id: validUuidOrNull(item.ingredient_id),
     name: String(item.name || '').trim(),
     quantity: Number(item.quantity || 0),
     unit: item.unit || '',
@@ -948,7 +955,7 @@ export async function addPantryTripForUser(user, trip) {
   const cleanItems = (trip.items || [])
     .filter((item) => String(item.name || '').trim() && Number(item.quantity || 0) > 0)
     .map((item) => ({
-      ingredient_id: item.ingredient_id && !String(item.ingredient_id).startsWith('starter-') ? item.ingredient_id : null,
+      ingredient_id: validUuidOrNull(item.ingredient_id),
       name: String(item.name || '').trim(),
       quantity: Number(item.quantity || 0),
       unit: item.unit || '',
@@ -990,3 +997,4 @@ export async function addPantryTripForUser(user, trip) {
 
   return normalizePantryTrip({ ...transaction, pantry_transaction_items: transactionItems });
 }
+
