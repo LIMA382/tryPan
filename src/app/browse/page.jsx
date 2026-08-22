@@ -154,7 +154,13 @@ export default function BrowsePage() {
             <AnimatePresence>
               {visibleMeals.map((meal) => (
                 <motion.div key={meal.id} layout initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, scale: 0.97 }} transition={{ duration: reduceMotion ? 0 : motionTokens.base, ease: motionTokens.ease }}>
-                  <MealCard meal={meal} publicView compact onOpen={() => setSelectedMeal(meal)} />
+                  <MealCard
+                    meal={meal}
+                    publicView
+                    compact
+                    onOpen={() => window.location.assign(`/recipes/${meal.id}`)}
+                    actions={<Link className="soft-btn" href={`/recipes/${meal.id}`}>View recipe</Link>}
+                  />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -177,3 +183,4 @@ export default function BrowsePage() {
     </>
   );
 }
+
