@@ -16,7 +16,7 @@ function PlannerContent({ user }) {
   const searchParams = useSearchParams();
   const mealTrayRef = useRef(null);
   const [weekStartDate, setWeekStartDate] = useState(() => getMonday());
-  const [mobileDayIndex, setMobileDayIndex] = useState(() => Math.max(0, new Date().getDay() - 1));
+  const [mobileDayIndex, setMobileDayIndex] = useState(() => (new Date().getDay() + 6) % 7);
 
   const [meals, setMeals] = useState([]);
   const [plan, setPlan] = useState(null);
@@ -109,7 +109,7 @@ function PlannerContent({ user }) {
 
   function goToThisWeek() {
     setWeekStartDate(getMonday());
-    setMobileDayIndex(Math.max(0, new Date().getDay() - 1));
+    setMobileDayIndex((new Date().getDay() + 6) % 7);
   }
 
   async function setSlot(day, slot, mealId) {
