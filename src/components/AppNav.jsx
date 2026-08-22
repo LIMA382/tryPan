@@ -12,6 +12,7 @@ function Icon({ type }) {
   if (type === 'grocery') return <path d="M6 7h14l-1.7 7.6a2 2 0 0 1-2 1.6H9a2 2 0 0 1-2-1.6L5.2 4H3M9 20h.01M17 20h.01" />;
   if (type === 'pantry') return <path d="M6 6.5h12M7 6.5l.8 13h8.4l.8-13M9 6.5V4.8A1.8 1.8 0 0 1 10.8 3h2.4A1.8 1.8 0 0 1 15 4.8v1.7M10 10v6M14 10v6" />;
   if (type === 'spending') return <path d="M4 19h16M7 16V9M12 16V5M17 16v-4" />;
+  if (type === 'student') return <path d="m3 9 9-5 9 5-9 5-9-5Zm4 3.2V17c2.8 2 7.2 2 10 0v-4.8M20 10v6" />;
   return <path d="M12 12.2a4.1 4.1 0 1 0 0-8.2 4.1 4.1 0 0 0 0 8.2Z M4.8 20.1c.7-3.6 3.4-5.7 7.2-5.7s6.5 2.1 7.2 5.7" />;
 }
 
@@ -25,6 +26,7 @@ export default function AppNav({ user }) {
     ['Grocery', '/grocery', 'grocery'],
     ['Pantry', '/pantry', 'pantry'],
     ['Spend', '/spending', 'spending'],
+    ['Campus', '/student', 'student'],
   ];
 
   return (
@@ -71,6 +73,7 @@ export default function AppNav({ user }) {
               ['Meals', '/meals', 'meals'],
               ['Grocery', '/grocery', 'grocery'],
               ['Pantry', '/pantry', 'pantry'],
+              ['Campus', '/student', 'student'],
               ['Account', '/account', 'account'],
             ]
           : [
@@ -93,3 +96,4 @@ export default function AppNav({ user }) {
     </>
   );
 }
+
