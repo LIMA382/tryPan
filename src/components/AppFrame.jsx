@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import AppNav from './AppNav';
+import PlanSubnav from './PlanSubnav';
 import { motionTokens } from '@/lib/motion';
 
 export default function AppFrame({ user, title, subtitle, children, action, eyebrow = 'tryPan' }) {
@@ -21,6 +22,7 @@ export default function AppFrame({ user, title, subtitle, children, action, eyeb
         transition={{ duration: reduceMotion ? 0 : motionTokens.slow, ease: motionTokens.ease }}
       >
         <main className="main">
+          {pathname?.startsWith('/plan') ? <PlanSubnav /> : null}
           <div className="toolbar app-toolbar">
             <div>
               <div className="eyebrow">{eyebrow}</div>
@@ -35,3 +37,4 @@ export default function AppFrame({ user, title, subtitle, children, action, eyeb
     </>
   );
 }
+
