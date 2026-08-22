@@ -20,6 +20,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
   const [newPriceUnit, setNewPriceUnit] = useState(ingredient?.price_unit || ingredient?.unit || 'kg');
   const [newCategory, setNewCategory] = useState(ingredient?.category || 'Other');
   const [busy, setBusy] = useState(false);
+  const [createNotice, setCreateNotice] = useState('');
 
   useEffect(() => {
     setQuery(ingredient?.name || '');
@@ -67,6 +68,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     if (!name) return;
 
     setBusy(true);
+    setCreateNotice('');
     try {
       const item = await createCatalogIngredient(user, {
         name,
@@ -77,6 +79,21 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
         price_unit: newPriceUnit || ingredient.unit || 'kg',
       });
       selectIngredient(item);
+      setCreateNotice(`“${item.name}” was created and selected.`);
+    } catch (error) {
+      const localItem = {
+        id: `custom-${Date.now()}`,
+        name,
+        region,
+        category: newCategory,
+        default_unit: ingredient.unit || 'g',
+        estimated_price: Number(newPrice || 0),
+        price_unit: newPriceUnit || ingredient.unit || 'kg',
+        is_user_created: true,
+      };
+
+      selectIngredient(localItem);
+      setCreateNotice(`“${name}” is ready for this trip. The shared catalogue could not be updated.`);
     } finally {
       setBusy(false);
     }
@@ -107,6 +124,8 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
           €{Number(ingredient.estimated_price).toFixed(2)} / {ingredient.price_unit || 'unit'}
         </span>
       ) : null}
+
+      {createNotice ? <span className="ingredient-create-notice" role="status">{createNotice}</span> : null}
 
       {open && (
         <div id="ingredient-suggestions" className="ingredient-suggestions">
@@ -149,3 +168,4 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     </div>
   );
 }
+
