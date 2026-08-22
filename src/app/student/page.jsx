@@ -70,7 +70,7 @@ function StudentContent({ user }) {
   }
 
   return (
-    <AppFrame user={user} title="Student hub" subtitle="Keep meals quick, affordable and realistic around classes." eyebrow="Campus mode" action={<div className="student-level"><span>Weekly progress</span><strong>{completedCount}/4</strong></div>}>
+    <AppFrame user={user} title="Home" subtitle="Your next meal, weekly plan and student budget in one place." eyebrow="Today" action={<div className="student-level"><span>Weekly progress</span><strong>{completedCount}/4</strong></div>}>
       {loading ? <div className="card skeleton-card"><div className="skeleton-line wide" /><div className="skeleton-line" /></div> : (
         <div className="student-dashboard page-transition">
           <section className="student-hero panel-soft">
@@ -83,8 +83,8 @@ function StudentContent({ user }) {
               <strong>{summary.coverage}%</strong><span>covered</span>
             </div>
             <div className="student-hero-actions">
-              <Link className="primary-btn" href="/planner">Plan the week</Link>
-              <Link className="soft-btn" href="/grocery">Open grocery list</Link>
+              <Link className="primary-btn" href="/plan/week">Plan the week</Link>
+              <Link className="soft-btn" href="/plan/groceries">Open grocery list</Link>
             </div>
           </section>
 
@@ -99,15 +99,15 @@ function StudentContent({ user }) {
             <section className="panel-soft student-card">
               <div className="card-header"><div><span className="student-kicker">Smart picks</span><h3>{settings.examMode ? 'Exam-week meals' : 'Quick meals between classes'}</h3></div><span className="badge">{summary.quickMeals.length} ideas</span></div>
               <div className="student-meal-list">
-                {summary.quickMeals.map((meal) => <Link href="/planner" key={meal.id}><div><strong>{meal.title}</strong><span>{meal.prep_time} min · {meal.servings || 1} servings</span></div><em>{money(meal.price)}</em></Link>)}
+                {summary.quickMeals.map((meal) => <Link href={`/recipes/${meal.id}`} key={meal.id}><div><strong>{meal.title}</strong><span>{meal.prep_time} min · {meal.servings || 1} servings</span></div><em>{money(meal.price)}</em></Link>)}
                 {!summary.quickMeals.length && <p>Add a faster meal to your library to see it here.</p>}
               </div>
             </section>
 
             <section className="panel-soft student-card">
-              <div className="card-header"><div><span className="student-kicker">Pantry rescue</span><h3>Cook before buying more</h3></div><Link href="/pantry">View pantry</Link></div>
+              <div className="card-header"><div><span className="student-kicker">Pantry rescue</span><h3>Cook before buying more</h3></div><Link href="/plan/pantry">View pantry</Link></div>
               <div className="student-meal-list">
-                {summary.rescueMeals.map((meal) => <Link href="/planner" key={meal.id}><div><strong>{meal.title}</strong><span>{meal.pantry_matches} ingredients ready</span></div><em>{meal.pantry_coverage}%</em></Link>)}
+                {summary.rescueMeals.map((meal) => <Link href={`/recipes/${meal.id}`} key={meal.id}><div><strong>{meal.title}</strong><span>{meal.pantry_matches} ingredients ready</span></div><em>{meal.pantry_coverage}%</em></Link>)}
                 {!summary.rescueMeals.length && <p>Add pantry items to unlock matching meals.</p>}
               </div>
             </section>
