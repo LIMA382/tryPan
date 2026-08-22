@@ -46,6 +46,7 @@ function PantryContent({ user }) {
   const [tripNotes, setTripNotes] = useState('');
   const [draftItem, setDraftItem] = useState({ ...emptyItem });
   const [tripItems, setTripItems] = useState([]);
+  const [tripStep, setTripStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -81,6 +82,7 @@ function PantryContent({ user }) {
 
   const pantryValue = useMemo(() => items.reduce((sum, item) => sum + estimatePantryItemValue(item), 0), [items]);
   const suggestedMeals = useMemo(() => suggestMealsFromPantry(meals, items), [meals, items]);
+  const tripTotal = useMemo(() => tripItems.reduce((sum, item) => sum + estimatePantryItemValue(item), 0), [tripItems]);
 
   const groupedItems = useMemo(() => items.reduce((acc, item) => {
     const category = item.category || 'Other';
@@ -156,6 +158,7 @@ function PantryContent({ user }) {
       setTripNotes('');
       setDraftItem({ ...emptyItem });
       setTripItems([]);
+      setTripStep(0);
       setMessage('Trip saved. Pantry updated.');
       await load();
     } catch (err) {
@@ -245,78 +248,73 @@ function PantryContent({ user }) {
       </section>
 
       <div className="pantry-layout cleaner-pantry-layout">
-        <section className="panel-soft pantry-trip-panel">
-          <div className="card-header">
+        <section className="panel-soft pantry-trip-panel lesson-trip-panel">
+          <div className="lesson-topline">
             <div>
-              <h3>Add supermarket trip</h3>
-              <p>Build a small basket, then save it once.</p>
+              <span className="lesson-label">Supermarket lesson</span>
+              <h3>{['Where did you shop?', 'What did you bring home?', 'Ready to update your pantry?'][tripStep]}</h3>
             </div>
-            <span className="badge">{region === 'nl' ? 'Netherlands' : 'Portugal'}</span>
+            <span className="lesson-region">{region === 'nl' ? 'NL' : 'PT'}</span>
           </div>
 
-          <form onSubmit={submitTrip} className="pantry-trip-form simple-trip-form">
-            <div className="form-grid compact-form-grid">
-              <div className="field">
-                <label>Store optional</label>
-                <input value={tripStore} onChange={(event) => setTripStore(event.target.value)} placeholder="Pingo Doce, Albert Heijn…" />
-              </div>
-              <div className="field">
-                <label>Date</label>
-                <input type="date" value={tripDate} onChange={(event) => setTripDate(event.target.value)} />
-              </div>
-              <div className="field full">
-                <label>Notes optional</label>
-                <input value={tripNotes} onChange={(event) => setTripNotes(event.target.value)} placeholder="Weekly shop, market run, already had food…" />
-              </div>
-            </div>
+          <div className="lesson-progress" aria-label={`Step ${tripStep + 1} of 3`}>
+            {[0, 1, 2].map((step) => <span className={step <= tripStep ? 'complete' : ''} key={step} />)}
+          </div>
+          <p className="lesson-step-count">Step {tripStep + 1} of 3</p>
 
-            <div className="simple-item-adder">
-              <div className="field ingredient-name-field">
-                <label>Ingredient</label>
-                <IngredientPicker user={user} region={region} ingredient={draftItem} onChange={updateDraftIngredient} />
-              </div>
-              <div className="field trip-qty-field">
-                <label>Qty</label>
-                <input type="number" min="0" step="0.01" value={draftItem.quantity} onChange={(event) => updateDraft('quantity', event.target.value)} />
-              </div>
-              <div className="field trip-unit-field">
-                <label>Unit</label>
-                <input value={draftItem.unit} onChange={(event) => updateDraft('unit', event.target.value)} placeholder="g" />
-              </div>
-              <div className="field trip-price-field">
-                <label>Price optional</label>
-                <input type="number" min="0" step="0.01" value={draftItem.estimated_price} onChange={(event) => updateDraft('estimated_price', event.target.value)} placeholder="0.00" disabled={Boolean(draftItem.is_free)} />
-              </div>
-              <div className="field trip-price-unit-field">
-                <label>Price unit</label>
-                <input value={draftItem.price_unit} onChange={(event) => updateDraft('price_unit', event.target.value)} placeholder={draftItem.unit || 'unit'} disabled={Boolean(draftItem.is_free)} />
-              </div>
-              <label className="free-toggle trip-free-toggle">
-                <input type="checkbox" checked={Boolean(draftItem.is_free)} onChange={(event) => updateDraft('is_free', event.target.checked)} />
-                Free / already had it
-              </label>
-              <button type="button" className="soft-btn add-to-trip-btn" onClick={addDraftToTrip}>Add to trip</button>
-            </div>
-
-            <div className="trip-basket">
-              <div className="trip-basket-header">
-                <h3>Trip basket</h3>
-                {tripItems.length ? <button type="button" className="mini-btn" onClick={clearTripBasket} aria-label="Clear trip basket">Clear</button> : null}
-              </div>
-              {tripItems.map((item, index) => (
-                <div className="trip-basket-row" key={`${item.name}-${index}`}>
-                  <span>{item.name}</span>
-                  <strong>{item.quantity} {item.unit}</strong>
-                  <em>{item.is_free ? 'Free' : money(estimatePantryItemValue(item))}</em>
-                  <button type="button" className="mini-btn" onClick={() => removeTripItem(index)}>Remove</button>
+          <form onSubmit={submitTrip} className="pantry-trip-form lesson-trip-form">
+            {tripStep === 0 && (
+              <div className="lesson-stage">
+                <div className="lesson-prompt-icon" aria-hidden="true">1</div>
+                <div className="field lesson-main-question">
+                  <label>Supermarket name</label>
+                  <input autoFocus value={tripStore} onChange={(event) => setTripStore(event.target.value)} placeholder="Pingo Doce, Albert Heijn…" />
+                  <small>Optional, but useful when comparing prices later.</small>
                 </div>
-              ))}
-              {!tripItems.length && <p>No items added yet. You can also save the current ingredient row directly.</p>}
-            </div>
+                <div className="field">
+                  <label>Shopping date</label>
+                  <input type="date" value={tripDate} onChange={(event) => setTripDate(event.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Trip note</label>
+                  <input value={tripNotes} onChange={(event) => setTripNotes(event.target.value)} placeholder="Weekly shop, quick top-up…" />
+                </div>
+              </div>
+            )}
 
-            <div className="trip-save-row">
-              <button className="primary-btn" disabled={saving}>{saving ? 'Saving…' : 'Save trip and update pantry'}</button>
-              <button type="button" className="soft-btn" onClick={clearTripBasket} disabled={saving || (!tripItems.length && !draftItem.name)}>Clear basket</button>
+            {tripStep === 1 && (
+              <div className="lesson-stage">
+                <div className="lesson-prompt-icon" aria-hidden="true">2</div>
+                <div className="simple-item-adder lesson-item-adder">
+                  <div className="field ingredient-name-field"><label>Choose an ingredient</label><IngredientPicker user={user} region={region} ingredient={draftItem} onChange={updateDraftIngredient} /></div>
+                  <div className="field trip-qty-field"><label>Quantity</label><input type="number" min="0" step="0.01" value={draftItem.quantity} onChange={(event) => updateDraft('quantity', event.target.value)} /></div>
+                  <div className="field trip-unit-field"><label>Unit</label><input value={draftItem.unit} onChange={(event) => updateDraft('unit', event.target.value)} placeholder="g" /></div>
+                  <div className="field trip-price-field"><label>Price</label><input type="number" min="0" step="0.01" value={draftItem.estimated_price} onChange={(event) => updateDraft('estimated_price', event.target.value)} placeholder="0.00" disabled={Boolean(draftItem.is_free)} /></div>
+                  <div className="field trip-price-unit-field"><label>Price unit</label><input value={draftItem.price_unit} onChange={(event) => updateDraft('price_unit', event.target.value)} placeholder={draftItem.unit || 'unit'} disabled={Boolean(draftItem.is_free)} /></div>
+                  <label className="free-toggle trip-free-toggle"><input type="checkbox" checked={Boolean(draftItem.is_free)} onChange={(event) => updateDraft('is_free', event.target.checked)} />Free / already had it</label>
+                  <button type="button" className="lesson-add-button" onClick={addDraftToTrip}>Add item</button>
+                </div>
+
+                <div className="lesson-basket">
+                  <div className="trip-basket-header"><h4>Your basket</h4><strong>{tripItems.length} {tripItems.length === 1 ? 'item' : 'items'}</strong></div>
+                  {tripItems.map((item, index) => <div className="lesson-basket-row" key={`${item.name}-${index}`}><span className="lesson-check">✓</span><div><strong>{item.name}</strong><small>{item.quantity} {item.unit} · {item.is_free ? 'Free' : money(estimatePantryItemValue(item))}</small></div><button type="button" onClick={() => removeTripItem(index)} aria-label={`Remove ${item.name}`}>×</button></div>)}
+                  {!tripItems.length && <p>Add your first item to continue.</p>}
+                </div>
+              </div>
+            )}
+
+            {tripStep === 2 && (
+              <div className="lesson-stage lesson-review">
+                <div className="lesson-finish-icon" aria-hidden="true">★</div>
+                <p>You completed the trip. Check the details before adding everything to your pantry.</p>
+                <dl><div><dt>Store</dt><dd>{tripStore || 'Not specified'}</dd></div><div><dt>Date</dt><dd>{tripDate}</dd></div><div><dt>Items</dt><dd>{tripItems.length}</dd></div><div><dt>Trip total</dt><dd>{money(tripTotal)}</dd></div></dl>
+                <div className="lesson-review-items">{tripItems.map((item, index) => <div key={`${item.name}-${index}`}><span>{item.name}</span><strong>{item.quantity} {item.unit}</strong><em>{item.is_free ? 'Free' : money(estimatePantryItemValue(item))}</em></div>)}</div>
+              </div>
+            )}
+
+            <div className="lesson-controls">
+              {tripStep > 0 ? <button type="button" className="lesson-back" onClick={() => setTripStep((step) => step - 1)} disabled={saving}>Back</button> : <span />}
+              {tripStep < 2 ? <button type="button" className="lesson-continue" onClick={() => setTripStep((step) => step + 1)} disabled={tripStep === 1 && !tripItems.length}>Continue</button> : <button className="lesson-continue lesson-finish" disabled={saving}>{saving ? 'Saving…' : 'Finish trip'}</button>}
             </div>
           </form>
         </section>
@@ -371,3 +369,4 @@ function PantryContent({ user }) {
 export default function PantryPage() {
   return <AuthGate>{(user) => <PantryContent user={user} />}</AuthGate>;
 }
+
