@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { createCatalogIngredient, loadIngredientCatalog } from '@/lib/dataStore';
+import { createCatalogIngredient, loadIngredientCatalog, updateCatalogIngredient } from '@/lib/dataStore';
 
 const CATEGORIES = ['Produce', 'Protein', 'Dairy', 'Pantry', 'Frozen', 'Spices', 'Bakery', 'Other'];
 
@@ -19,6 +19,8 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
   const [newPrice, setNewPrice] = useState(ingredient?.estimated_price || '');
   const [newPriceUnit, setNewPriceUnit] = useState(ingredient?.price_unit || ingredient?.unit || 'kg');
   const [newCategory, setNewCategory] = useState(ingredient?.category || 'Other');
+  const [newDefaultUnit, setNewDefaultUnit] = useState(ingredient?.unit || 'g');
+  const [editingItem, setEditingItem] = useState(null);
   const [busy, setBusy] = useState(false);
   const [createNotice, setCreateNotice] = useState('');
 
@@ -27,6 +29,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     setNewPrice(ingredient?.estimated_price || '');
     setNewPriceUnit(ingredient?.price_unit || ingredient?.unit || 'kg');
     setNewCategory(ingredient?.category || 'Other');
+    if (!editingItem) setNewDefaultUnit(ingredient?.unit || 'g');
   }, [ingredient?.name, ingredient?.estimated_price, ingredient?.price_unit, ingredient?.unit, ingredient?.category]);
 
   useEffect(() => {
@@ -61,6 +64,17 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     setNewCategory(item.category || 'Other');
     setOpen(false);
     setCreating(false);
+    setEditingItem(null);
+  }
+
+  function startEditing(item) {
+    setEditingItem(item);
+    setCreating(true);
+    setQuery(item.name);
+    setNewCategory(item.category || 'Other');
+    setNewDefaultUnit(item.default_unit || 'g');
+    setNewPrice(item.estimated_price || '');
+    setNewPriceUnit(item.price_unit || item.default_unit || 'kg');
   }
 
   async function createIngredient() {
@@ -70,16 +84,20 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     setBusy(true);
     setCreateNotice('');
     try {
-      const item = await createCatalogIngredient(user, {
+      const draft = {
         name,
         region,
         category: newCategory,
-        default_unit: ingredient.unit || 'g',
+        default_unit: newDefaultUnit || ingredient.unit || 'g',
         estimated_price: Number(newPrice || 0),
         price_unit: newPriceUnit || ingredient.unit || 'kg',
-      });
+      };
+      const item = editingItem
+        ? await updateCatalogIngredient(user, { ...editingItem, ...draft })
+        : await createCatalogIngredient(user, draft);
+      setCatalog((current) => [item, ...current.filter((entry) => entry.id !== item.id && entry.name.toLowerCase() !== item.name.toLowerCase())]);
       selectIngredient(item);
-      setCreateNotice(`“${item.name}” was created and selected.`);
+      setCreateNotice(`“${item.name}” was ${editingItem ? 'updated' : 'created'} and selected.`);
     } catch (error) {
       const localItem = {
         id: `custom-${Date.now()}`,
@@ -129,15 +147,20 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
 
       {open && (
         <div id="ingredient-suggestions" className="ingredient-suggestions">
-          {catalog.slice(0, 7).map((item) => (
-            <button type="button" key={item.id} onClick={() => selectIngredient(item)}>
-              <span>
+          {catalog.slice(0, 7).map((item) => {
+            const canEdit = item.is_user_created && (String(item.id || '').startsWith('local-') || item.created_by === user?.id);
+            return (
+            <div className="ingredient-suggestion-row" key={item.id}>
+              <button type="button" className="ingredient-select-button" onClick={() => selectIngredient(item)}>
+                <span>
                 <strong>{item.name}</strong>
                 <small>{item.category} · {item.default_unit}</small>
-              </span>
-              <em>{formatPrice(item)}</em>
-            </button>
-          ))}
+                </span>
+                <em>{formatPrice(item)}</em>
+              </button>
+              {canEdit ? <button type="button" className="ingredient-edit-button" aria-label={`Edit ${item.name}`} onClick={() => startEditing(item)}>Edit</button> : null}
+            </div>
+          );})}
 
           {query.trim() && !exactMatch && !creating && (
             <button type="button" className="create-ingredient-row" onClick={() => setCreating(true)}>
@@ -147,17 +170,18 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
 
           {creating && (
             <div className="create-ingredient-box">
-              <strong>Create “{query.trim()}”</strong>
+              <strong>{editingItem ? `Edit “${editingItem.name}”` : `Create “${query.trim()}”`}</strong>
               <div className="create-ingredient-grid">
                 <select aria-label="Ingredient category" value={newCategory} onChange={(event) => setNewCategory(event.target.value)}>
                   {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
                 </select>
+                <input aria-label="Ingredient default unit" value={newDefaultUnit} onChange={(event) => setNewDefaultUnit(event.target.value)} placeholder="Default unit" />
                 <input aria-label="Ingredient price" type="number" min="0" step="0.01" value={newPrice} onChange={(event) => setNewPrice(event.target.value)} placeholder="Price" />
                 <input aria-label="Ingredient price unit" value={newPriceUnit} onChange={(event) => setNewPriceUnit(event.target.value)} placeholder="per kg" />
               </div>
               <div className="create-ingredient-actions">
-                <button type="button" className="soft-btn" onClick={() => setCreating(false)}>Cancel</button>
-                <button type="button" className="primary-btn" disabled={busy} onClick={createIngredient}>{busy ? 'Creating…' : 'Create'}</button>
+                <button type="button" className="soft-btn" onClick={() => { setCreating(false); setEditingItem(null); }}>Cancel</button>
+                <button type="button" className="primary-btn" disabled={busy} onClick={createIngredient}>{busy ? 'Saving…' : editingItem ? 'Save changes' : 'Create'}</button>
               </div>
             </div>
           )}
