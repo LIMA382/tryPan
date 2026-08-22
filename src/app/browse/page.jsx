@@ -10,7 +10,7 @@ import { copyPublicMealForUser, loadPublicMeals } from '@/lib/dataStore';
 import { supabase, hasSupabaseEnv } from '@/lib/supabaseClient';
 import { motionTokens } from '@/lib/motion';
 
-const FILTERS = ['All', 'Student picks', '15 minutes', 'Budget', 'Meal prep', 'Microwave', 'Vegetarian', 'High protein', 'Dinner', 'Lunch', 'Breakfast'];
+const FILTERS = ['All', 'Student picks', '15 minutes', 'Budget', 'Breakfast', 'Soup', 'Meal prep', 'Microwave', 'Vegetarian', 'High protein', 'Dinner', 'Lunch'];
 
 function BrowseSkeleton() {
   return (
