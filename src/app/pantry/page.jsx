@@ -27,6 +27,20 @@ const emptyItem = {
   is_free: false,
 };
 
+const SUPERMARKETS = {
+  pt: [
+    'Continente', 'Continente Bom Dia', 'Continente Modelo', 'Pingo Doce', 'Lidl', 'Aldi',
+    'Auchan', 'Auchan MyAuchan', 'Intermarché', 'Mercadona', 'Minipreço', 'El Corte Inglés',
+    'Supercor', 'E.Leclerc', 'Froiz', 'Apolónia', 'Meu Super', 'Amanhecer', 'Coviran',
+    'SPAR', 'Makro', 'Recheio', 'Celeiro', 'Go Natural', 'The Food Co.',
+  ],
+  nl: [
+    'Albert Heijn', 'Jumbo', 'Lidl', 'Aldi', 'PLUS', 'Dirk', 'Coop', 'SPAR', 'DekaMarkt',
+    'Hoogvliet', 'Vomar', 'Nettorama', 'Boni', 'Poiesz', 'Ekoplaza', 'Marqt', 'Picnic',
+    'Crisp', 'Makro', 'Sligro', 'Amazing Oriental', 'Odin', 'Landi', 'Vers & Fijn',
+  ],
+};
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -42,6 +56,7 @@ function PantryContent({ user }) {
   const [meals, setMeals] = useState([]);
   const [editing, setEditing] = useState({});
   const [tripStore, setTripStore] = useState('');
+  const [storeSuggestionsOpen, setStoreSuggestionsOpen] = useState(false);
   const [tripDate, setTripDate] = useState(today());
   const [tripNotes, setTripNotes] = useState('');
   const [draftItem, setDraftItem] = useState({ ...emptyItem });
@@ -83,6 +98,15 @@ function PantryContent({ user }) {
   const pantryValue = useMemo(() => items.reduce((sum, item) => sum + estimatePantryItemValue(item), 0), [items]);
   const suggestedMeals = useMemo(() => suggestMealsFromPantry(meals, items), [meals, items]);
   const tripTotal = useMemo(() => tripItems.reduce((sum, item) => sum + estimatePantryItemValue(item), 0), [tripItems]);
+  const supermarketSuggestions = useMemo(() => {
+    const needle = tripStore.trim().toLowerCase();
+    const brands = SUPERMARKETS[region] || SUPERMARKETS.pt;
+    if (!needle) return brands.slice(0, 10);
+    return brands
+      .filter((brand) => brand.toLowerCase().includes(needle))
+      .sort((a, b) => Number(!a.toLowerCase().startsWith(needle)) - Number(!b.toLowerCase().startsWith(needle)))
+      .slice(0, 10);
+  }, [region, tripStore]);
 
   const groupedItems = useMemo(() => items.reduce((acc, item) => {
     const category = item.category || 'Other';
@@ -266,9 +290,30 @@ function PantryContent({ user }) {
             {tripStep === 0 && (
               <div className="lesson-stage">
                 <div className="lesson-prompt-icon" aria-hidden="true">1</div>
-                <div className="field lesson-main-question">
+                <div className="field lesson-main-question supermarket-picker">
                   <label>Supermarket name</label>
-                  <input autoFocus value={tripStore} onChange={(event) => setTripStore(event.target.value)} placeholder="Pingo Doce, Albert Heijn…" />
+                  <input
+                    autoFocus
+                    role="combobox"
+                    aria-label="Search supermarket"
+                    aria-expanded={storeSuggestionsOpen}
+                    aria-controls="supermarket-suggestions"
+                    value={tripStore}
+                    onFocus={() => setStoreSuggestionsOpen(true)}
+                    onChange={(event) => { setTripStore(event.target.value); setStoreSuggestionsOpen(true); }}
+                    onBlur={() => window.setTimeout(() => setStoreSuggestionsOpen(false), 120)}
+                    placeholder={region === 'nl' ? 'Start typing Albert Heijn, Jumbo…' : 'Start typing Continente, Pingo Doce…'}
+                  />
+                  {storeSuggestionsOpen && supermarketSuggestions.length ? (
+                    <div className="supermarket-suggestions" id="supermarket-suggestions">
+                      {supermarketSuggestions.map((brand) => (
+                        <button type="button" key={brand} onMouseDown={(event) => event.preventDefault()} onClick={() => { setTripStore(brand); setStoreSuggestionsOpen(false); }}>
+                          <span className="supermarket-mark" aria-hidden="true">{brand.slice(0, 1)}</span>
+                          <span><strong>{brand}</strong><small>{region === 'nl' ? 'Netherlands' : 'Portugal'}</small></span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <small>Optional, but useful when comparing prices later.</small>
                 </div>
                 <div className="field">
