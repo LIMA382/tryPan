@@ -3078,6 +3078,7 @@ textarea:focus-visible,
 .lesson-main-question input { min-height: 58px; font-size: 18px; border-width: 2px; }
 .lesson-main-question small { color: var(--muted); }
 .lesson-item-adder { margin: 0; }
+.ingredient-create-notice { display: block; margin-top: 7px; color: var(--brand-deep-olive); font-size: 12px; font-weight: 800; }
 .lesson-add-button { grid-area: add; min-height: 48px; border: 0; border-radius: 16px; background: var(--brand-blue); color: white; font-weight: 950; }
 .lesson-basket { padding: 16px; border-radius: 22px; background: rgba(229,222,202,.34); }
 .lesson-basket h4 { margin: 0; font-size: 18px; }
