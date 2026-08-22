@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { DAYS, SLOTS, addDays, addWeeks, formatWeekRange, getMonday } from '@/lib/date';
@@ -12,6 +13,7 @@ function price(value) {
 }
 
 function PlannerContent({ user }) {
+  const searchParams = useSearchParams();
   const mealTrayRef = useRef(null);
   const [weekStartDate, setWeekStartDate] = useState(() => getMonday());
   const [mobileDayIndex, setMobileDayIndex] = useState(() => Math.max(0, new Date().getDay() - 1));
@@ -40,13 +42,14 @@ function PlannerContent({ user }) {
       setMeals(loadedMeals);
       setPlan(loadedPlan);
       setPantryItems(loadedPantry);
-      setSelectedMealId(loadedMeals[0]?.id || null);
+      const requestedMeal = searchParams.get('recipe');
+      setSelectedMealId(loadedMeals.some((meal) => String(meal.id) === requestedMeal) ? requestedMeal : loadedMeals[0]?.id || null);
     } catch (err) {
       setError(err.message || 'Could not load planner.');
     } finally {
       setLoading(false);
     }
-  }, [user, weekStartDate]);
+  }, [user, weekStartDate, searchParams]);
 
   useEffect(() => {
     load();
@@ -454,3 +457,4 @@ function PlannerContent({ user }) {
 export default function PlannerPage() {
   return <AuthGate>{(user) => <PlannerContent user={user} />}</AuthGate>;
 }
+
