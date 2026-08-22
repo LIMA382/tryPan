@@ -1,3 +1,5 @@
+import { studentRecipeExpansion } from './studentRecipeExpansion';
+
 export const seedMeals = [
   {
     title: 'Chicken rice bowl',
@@ -356,5 +358,6 @@ export const publicMeals = [
     tags: ['No cook', 'Packed lunch', 'Vegetarian', 'Quick'], creator: 'tryPan Student Kitchen', is_public: true,
     ingredients: [['White beans', 1, 'can', 'Pantry'], ['Wraps', 4, 'units', 'Bakery'], ['Pesto', 2, 'tbsp', 'Pantry'], ['Spinach', 80, 'g', 'Produce'], ['Tomatoes', 2, 'units', 'Produce']],
   },
+  ...studentRecipeExpansion,
 ];
 
