@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { usePathname, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import MealCard from '@/components/MealCard';
@@ -10,6 +12,8 @@ import MealDetailsModal from '@/components/MealDetailsModal';
 import { deleteMealForUser, loadMyMeals, loadProfileForUser, saveMealForUser } from '@/lib/dataStore';
 
 function MealsContent({ user }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [meals, setMeals] = useState([]);
   const [profile, setProfile] = useState(null);
   const [editingMeal, setEditingMeal] = useState(null);
@@ -38,6 +42,13 @@ function MealsContent({ user }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setEditingMeal(null);
+      setShowForm(true);
+    }
+  }, [searchParams]);
 
   const filters = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Quick', 'Leftovers', 'Pantry', 'Public', 'Private'];
   const visibleMeals = useMemo(() => {
@@ -93,10 +104,18 @@ function MealsContent({ user }) {
   return (
     <AppFrame
       user={user}
-      title="My meals"
-      subtitle="Meals you actually know how to cook. Add price, ingredients, instructions and optional video links."
-      action={<button className="primary-btn" onClick={startNewMeal}>Add meal</button>}
+      title={pathname.startsWith('/library') ? 'Your library' : 'My meals'}
+      subtitle="Recipes you created, saved and rely on. Open one to plan, edit or share it."
+      action={<button className="primary-btn" onClick={startNewMeal}>Add recipe</button>}
     >
+      {pathname.startsWith('/library') ? (
+        <nav className="library-tabs" aria-label="Library sections">
+          <Link className="active" href="/library/created">Created <span>{meals.length}</span></Link>
+          <span title="Saved recipes will appear here as the community grows">Saved</span>
+          <span title="Recently cooked recipes will appear here">Cooked</span>
+          <span title="Recently opened recipes will appear here">Recent</span>
+        </nav>
+      ) : null}
       {error && <div className="notice error-notice">{error}</div>}
 
       <AnimatePresence mode="wait">
@@ -166,9 +185,10 @@ function MealsContent({ user }) {
               >
                 <MealCard
                   meal={meal}
-                  onOpen={() => setSelectedMeal(meal)}
+                  onOpen={() => window.location.assign(`/recipes/${meal.id}`)}
                   actions={
                     <div className="meal-card-actions">
+                      <Link className="soft-btn" href={`/recipes/${meal.id}`}>Open</Link>
                       <button className="soft-btn" onClick={() => startEditMeal(meal)}>Edit</button>
                       <button className="danger-btn" onClick={() => remove(meal.id)}>Delete</button>
                     </div>
@@ -197,3 +217,4 @@ function MealsContent({ user }) {
 export default function MealsPage() {
   return <AuthGate>{(user) => <MealsContent user={user} />}</AuthGate>;
 }
+
