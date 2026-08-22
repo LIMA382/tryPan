@@ -110,7 +110,7 @@ function GroceryContent({ user }) {
         </div>
 
         <button className="soft-btn" onClick={copy}>Copy missing list</button>
-        <Link className="soft-btn" href="/pantry">Edit pantry</Link>
+        <Link className="soft-btn" href="/plan/pantry">Edit pantry</Link>
       </div>
 
       <div className="grocery-list clean-grocery-list smart-grocery-list">
@@ -157,7 +157,7 @@ function GroceryContent({ user }) {
         ) : null}
 
         {!loading && !pantryAwareList.length ? (
-          <div className="card empty-state-card"><h3>Plan meals first</h3><p>Add meals to your weekly planner and tryPan will compare them with your pantry.</p><a className="primary-btn" href="/planner">Open planner</a></div>
+          <div className="card empty-state-card"><h3>Plan meals first</h3><p>Add meals to your weekly planner and tryPan will compare them with your pantry.</p><a className="primary-btn" href="/plan/week">Open planner</a></div>
         ) : null}
       </div>
     </AppFrame>
@@ -167,3 +167,4 @@ function GroceryContent({ user }) {
 export default function GroceryPage() {
   return <AuthGate>{(user) => <GroceryContent user={user} />}</AuthGate>;
 }
+
