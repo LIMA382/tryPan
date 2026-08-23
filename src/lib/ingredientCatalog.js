@@ -1,3 +1,5 @@
+import { ahProductCatalog } from './ahProductCatalog';
+
 export const REGIONS = [
   { code: 'pt', label: 'Portugal', currency: '€' },
   { code: 'nl', label: 'Netherlands', currency: '€' },
@@ -242,28 +244,36 @@ const BASE_INGREDIENTS = [
   ['Natural yogurt', 'Dairy', 'g', 'kg', 1.80, 2.15]
 ];
 
-export const starterIngredients = BASE_INGREDIENTS.flatMap(([name, category, defaultUnit, priceUnit, ptPrice, nlPrice]) => ([
-  {
-    id: `starter-pt-${slugify(name)}`,
-    name,
-    region: 'pt',
-    category,
-    default_unit: defaultUnit,
-    price_unit: priceUnit,
-    estimated_price: ptPrice,
-    is_starter: true,
-  },
-  {
-    id: `starter-nl-${slugify(name)}`,
-    name,
+export const starterIngredients = [
+  ...BASE_INGREDIENTS.flatMap(([name, category, defaultUnit, priceUnit, ptPrice, nlPrice]) => ([
+    {
+      id: `starter-pt-${slugify(name)}`,
+      name,
+      region: 'pt',
+      category,
+      default_unit: defaultUnit,
+      price_unit: priceUnit,
+      estimated_price: ptPrice,
+      is_starter: true,
+    },
+    {
+      id: `starter-nl-${slugify(name)}`,
+      name,
+      region: 'nl',
+      category,
+      default_unit: defaultUnit,
+      price_unit: priceUnit,
+      estimated_price: nlPrice,
+      is_starter: true,
+    },
+  ])),
+  ...ahProductCatalog.map((item) => ({
+    id: `starter-nl-ah-${slugify(item.name)}`,
+    ...item,
     region: 'nl',
-    category,
-    default_unit: defaultUnit,
-    price_unit: priceUnit,
-    estimated_price: nlPrice,
     is_starter: true,
-  },
-]));
+  })),
+];
 
 export function slugify(value) {
   return String(value || '')
