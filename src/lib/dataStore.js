@@ -323,7 +323,11 @@ function mergeCatalogRows(region, rows = []) {
   }
   for (const row of rows || []) {
     const item = normalizeCatalogIngredient(row);
-    map.set(item.name.toLowerCase(), item);
+    const key = item.name.toLowerCase();
+    const current = map.get(key);
+    // Built-in regional prices are the maintained supermarket baseline. A user's
+    // own saved price still wins, while old database seed rows cannot make it stale.
+    map.set(key, item.is_user_created ? item : { ...item, estimated_price: current?.estimated_price ?? item.estimated_price, price_unit: current?.price_unit || item.price_unit });
   }
   return Array.from(map.values()).sort((a, b) => {
     if (a.is_user_created !== b.is_user_created) return a.is_user_created ? -1 : 1;
