@@ -997,6 +997,19 @@ export async function consumePantryForMeal(user, meal) {
   return updates;
 }
 
+export async function saveLeftoversForUser(user, meal, portions) {
+  const quantity = Math.max(0, Number(portions || 0));
+  if (!quantity) return null;
+  const name = `Leftover: ${meal.title}`;
+  const pantry = await loadPantryItemsForUser(user);
+  const existing = pantry.find((item) => String(item.name).toLowerCase() === name.toLowerCase());
+  return savePantryItemForUser(user, {
+    ...(existing || {}), name, quantity: Number(existing?.quantity || 0) + quantity,
+    unit: 'serving', category: 'Leftovers', estimated_price: 0, price_unit: 'serving', is_free: true,
+    expiry_date: new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10),
+  });
+}
+
 async function addToPantryItem(user, item) {
   const clean = {
     ingredient_id: validUuidOrNull(item.ingredient_id),

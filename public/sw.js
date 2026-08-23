@@ -1,13 +1,14 @@
-const CACHE_NAME = 'trypan-pwa-v4';
+const CACHE_NAME = 'trypan-pwa-v5';
 const APP_SHELL = [
   '/',
-  '/browse',
-  '/planner',
-  '/meals',
-  '/grocery',
-  '/pantry',
-  '/account',
-  '/spending',
+  '/app',
+  '/discover',
+  '/plan/week',
+  '/plan/groceries',
+  '/plan/pantry',
+  '/plan/budget',
+  '/library/created',
+  '/settings/profile',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
@@ -41,13 +42,18 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return;
 
-  event.respondWith(
-    fetch(request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => null);
-        return response;
-      })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match('/')))
-  );
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(request).then((response) => {
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+      return response;
+    }).catch(() => caches.match(request).then((cached) => cached || caches.match('/app') || caches.match('/'))));
+    return;
+  }
+
+  event.respondWith(caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+    const copy = response.clone();
+    caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+    return response;
+  })));
 });

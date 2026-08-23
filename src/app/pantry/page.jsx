@@ -226,6 +226,22 @@ function PantryContent({ user }) {
     }
   }
 
+  async function adjustItem(item, delta) {
+    const quantity = Math.max(0, Number(item.quantity || 0) + delta);
+    setSaving(true);
+    setError('');
+    try {
+      if (!quantity) await deletePantryItemForUser(user, item.id);
+      else await savePantryItemForUser(user, { ...item, quantity });
+      setMessage(quantity ? `${item.name} updated.` : `${item.name} removed.`);
+      await load();
+    } catch (err) {
+      setError(err.message || 'Could not update pantry item.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function removeItem(itemId) {
     const ok = window.confirm('Remove this item from your pantry?');
     if (!ok) return;
@@ -398,6 +414,11 @@ function PantryContent({ user }) {
                       <div className="pantry-item-main">
                         <strong>{item.name}</strong>
                         <small>{draft.is_free ? 'Free / no-cost' : draft.estimated_price ? `${money(draft.estimated_price)} / ${draft.price_unit || draft.unit || 'unit'}` : 'No price set'}</small>
+                      </div>
+                      <div className="quantity-stepper">
+                        <button type="button" aria-label={`Remove one ${item.name}`} onClick={() => adjustItem(item, -1)} disabled={saving}>−</button>
+                        <strong>{draft.quantity}</strong>
+                        <button type="button" aria-label={`Add one ${item.name}`} onClick={() => adjustItem(item, 1)} disabled={saving}>+</button>
                       </div>
                       <input type="number" min="0" step="0.01" value={draft.quantity} onChange={(event) => editItemField(item.id, 'quantity', event.target.value)} />
                       <input value={draft.unit || ''} onChange={(event) => editItemField(item.id, 'unit', event.target.value)} />

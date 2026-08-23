@@ -7,6 +7,7 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { DAYS, SLOTS, addDays, addWeeks, formatWeekRange, getMonday } from '@/lib/date';
 import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
+import { loadStudentSettings } from '@/lib/studentStore';
 
 function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
@@ -27,6 +28,7 @@ function PlannerContent({ user }) {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [autoPlanning, setAutoPlanning] = useState(false);
 
   const load = useCallback(async function load() {
     setLoading(true);
@@ -133,6 +135,35 @@ function PlannerContent({ user }) {
     await setSlot(day, slot, null);
   }
 
+  async function autoPlanWeek() {
+    setAutoPlanning(true);
+    setError('');
+    try {
+      const settings = loadStudentSettings();
+      const ranked = suggestMealsFromPantry(meals, pantryItems);
+      const used = new Map();
+      let next = plan;
+      for (const day of DAYS) {
+        for (const slot of SLOTS) {
+          const key = `${day}-${slot}`;
+          if (next.slots[key]) continue;
+          const kind = slot.toLowerCase();
+          const timeLimit = settings.examMode ? Math.min(15, settings.maxPrepTime) : settings.maxPrepTime;
+          const meal = ranked.find((candidate) => (candidate.meal_type === kind || candidate.meal_type === 'both') && Number(candidate.prep_time || 0) <= timeLimit && (used.get(candidate.id) || 0) < 2)
+            || ranked.find((candidate) => (candidate.meal_type === kind || candidate.meal_type === 'both') && (used.get(candidate.id) || 0) < 2);
+          if (!meal) continue;
+          next = await setPlannedMealForUser(user, next, day, slot, meal.id);
+          used.set(meal.id, (used.get(meal.id) || 0) + 1);
+        }
+      }
+      setPlan(next);
+    } catch (err) {
+      setError(err.message || 'Could not automatically plan this week.');
+    } finally {
+      setAutoPlanning(false);
+    }
+  }
+
   return (
     <AppFrame
       user={user}
@@ -148,6 +179,7 @@ function PlannerContent({ user }) {
         </div>
         <button type="button" className="soft-btn" onClick={goToThisWeek}>This week</button>
         <button type="button" className="soft-btn" onClick={() => moveWeek(1)}>Next week →</button>
+        <button type="button" className="primary-btn" onClick={autoPlanWeek} disabled={autoPlanning || loading}>{autoPlanning ? 'Planning…' : 'Auto-plan empty slots'}</button>
       </div>
 
       {error && <div className="notice error-notice">{error}</div>}

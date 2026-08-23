@@ -3295,6 +3295,18 @@ textarea:focus-visible,
 .cook-check strong, .cook-check small { display: block; }
 .cook-check small { color: var(--muted); }
 .cook-complete { padding: 18px; border-radius: 18px; background: rgba(220,239,214,.62); }
+.cook-finish-controls { display: grid; gap: 12px; max-width: 360px; }
+.cook-finish-controls label { display: grid; gap: 6px; font-weight: 850; }
+.cook-finish-controls input { max-width: 120px; }
+.cook-finish-controls small { color: var(--muted); }
+
+.pantry-item-row { grid-template-columns: minmax(160px, 1fr) 122px 80px 74px 148px auto auto; }
+.quantity-stepper { display: grid; grid-template-columns: 34px minmax(36px, 1fr) 34px; align-items: center; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: rgba(255,255,255,.7); }
+.quantity-stepper button { min-height: 40px; border: 0; background: var(--soft); color: var(--green); font-size: 20px; font-weight: 900; cursor: pointer; }
+.quantity-stepper strong { text-align: center; }
+
+.offline-banner { position: fixed; z-index: 3000; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; color: white; background: #45441a; box-shadow: var(--shadow-sm); font-weight: 800; }
+.install-app-button { position: fixed; z-index: 2500; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); border: 0; border-radius: 999px; padding: 12px 18px; background: var(--brand-terracotta); color: white; box-shadow: var(--shadow-sm); font: inherit; font-weight: 900; cursor: pointer; }
 
 @media (max-width: 900px) {
   .desktop-nav-links .nav-tab { padding-inline: 9px; }
@@ -3310,4 +3322,6 @@ textarea:focus-visible,
   .recipe-detail-hero { padding: 22px; }
   .recipe-facts { grid-template-columns: 1fr 1fr; }
   .cook-mode-grid { grid-template-columns: 1fr; }
+  .pantry-item-row { grid-template-columns: 1fr !important; }
+  .quantity-stepper { max-width: 150px; }
 }
