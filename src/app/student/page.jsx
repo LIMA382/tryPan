@@ -16,6 +16,9 @@ function StudentContent({ user }) {
   const [data, setData] = useState({ meals: [], pantry: [], trips: [], plan: null });
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [mealIdeas, setMealIdeas] = useState([]);
+  const [ideaSource, setIdeaSource] = useState('local');
+  const [asking, setAsking] = useState(false);
 
   const load = useCallback(async () => {
     setSettings(loadStudentSettings());
@@ -69,6 +72,42 @@ function StudentContent({ user }) {
     setProgress(toggleStudentChallenge(id));
   }
 
+  function localMealIdeas() {
+    const pantryNames = new Set(data.pantry.map((item) => String(item.name).trim().toLowerCase()));
+    const limit = settings.examMode ? Math.min(15, settings.maxPrepTime) : settings.maxPrepTime;
+    return [...data.meals].map((meal) => {
+      const ingredients = meal.ingredients || [];
+      const ready = ingredients.filter((item) => pantryNames.has(String(item.name).trim().toLowerCase()));
+      const missing = ingredients.filter((item) => !pantryNames.has(String(item.name).trim().toLowerCase())).map((item) => item.name).slice(0, 4);
+      const coverage = ingredients.length ? Math.round((ready.length / ingredients.length) * 100) : 0;
+      const score = coverage * 3 - Math.max(0, Number(meal.prep_time || 0) - limit) - Number(meal.price || 0);
+      return { mealId: meal.id, title: meal.title, prepTime: Number(meal.prep_time || 0), pantryMatch: `${coverage}% of the ingredients are already in your pantry`, missing, reason: coverage >= 60 ? 'Uses plenty of what you already have.' : 'A practical, quick student meal.', score };
+    }).sort((a, b) => b.score - a.score).slice(0, 3);
+  }
+
+  async function askWhatToEat() {
+    setAsking(true);
+    const fallback = localMealIdeas();
+    setMealIdeas(fallback);
+    setIdeaSource('local');
+    try {
+      const response = await fetch('/api/recommend-meals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pantry: data.pantry.slice(0, 80).map(({ name, quantity, unit, expiry_date }) => ({ name, quantity, unit, expiry_date })),
+          preferences: { maxPrepTime: settings.maxPrepTime, weeklyBudget: settings.weeklyBudget, examMode: settings.examMode, servings: settings.householdSize },
+          candidates: data.meals.slice(0, 60).map(({ id, title, prep_time, price, tags, ingredients }) => ({ id, title, prepTime: prep_time, price, tags, ingredients: (ingredients || []).map((item) => item.name) })),
+        }),
+      });
+      const result = await response.json();
+      if (response.ok && result.suggestions?.length === 3) {
+        setMealIdeas(result.suggestions.map((idea) => ({ ...idea, mealId: data.meals.find((meal) => meal.title.toLowerCase() === idea.title.toLowerCase())?.id || idea.mealId })));
+        setIdeaSource('openai');
+      }
+    } catch { /* The local suggestions are already visible. */ }
+    finally { setAsking(false); }
+  }
+
   return (
     <AppFrame user={user} title="Home" subtitle="Your next meal, weekly plan and student budget in one place." eyebrow="Today" action={<div className="student-level"><span>Weekly progress</span><strong>{completedCount}/4</strong></div>}>
       {loading ? <div className="card skeleton-card"><div className="skeleton-line wide" /><div className="skeleton-line" /></div> : (
@@ -93,6 +132,11 @@ function StudentContent({ user }) {
             <article><span>Food budget</span><strong>{money(settings.weeklyBudget)}</strong><small>your weekly target</small></article>
             <article><span>Pantry coverage</span><strong>{summary.coverage}%</strong><small>less waste, fewer purchases</small></article>
             <article><span>Cooking pace</span><strong>≤ {settings.examMode ? Math.min(15, settings.maxPrepTime) : settings.maxPrepTime} min</strong><small>{settings.examMode ? 'exam mode is on' : 'your preferred maximum'}</small></article>
+          </section>
+
+          <section className="panel-soft meal-assistant">
+            <div className="card-header"><div><span className="student-kicker">Dinner decision</span><h3>What should I eat?</h3><p>Three choices based on your pantry, time and budget.</p></div><button type="button" className="primary-btn" onClick={askWhatToEat} disabled={asking}>{asking ? 'Thinking…' : mealIdeas.length ? 'Give me 3 new picks' : 'Choose 3 meals'}</button></div>
+            {mealIdeas.length ? <><div className="assistant-grid">{mealIdeas.map((idea, index) => <article className="assistant-card" key={`${idea.title}-${index}`}><span className="assistant-number">{index + 1}</span><div><h4>{idea.title}</h4><p>{idea.reason}</p><small>{idea.prepTime} min · {idea.pantryMatch}</small>{idea.missing?.length ? <div className="assistant-missing">Missing: {idea.missing.join(', ')}</div> : <div className="assistant-ready">You have everything needed</div>}{idea.mealId && <Link href={`/recipes/${idea.mealId}`}>Open recipe →</Link>}</div></article>)}</div><small className="assistant-source">{ideaSource === 'openai' ? 'Personalized by OpenAI using only the pantry and preferences shown here.' : 'Calculated privately in tryPan. Connect OpenAI for more creative picks.'}</small></> : <p className="assistant-empty">Tap the button when you do not want to decide from scratch.</p>}
           </section>
 
           <div className="student-main-grid">
@@ -145,4 +189,3 @@ function StudentContent({ user }) {
 export default function StudentPage() {
   return <AuthGate>{(user) => <StudentContent user={user} />}</AuthGate>;
 }
-

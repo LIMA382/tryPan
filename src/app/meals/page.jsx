@@ -217,4 +217,3 @@ function MealsContent({ user }) {
 export default function MealsPage() {
   return <AuthGate>{(user) => <MealsContent user={user} />}</AuthGate>;
 }
-

@@ -457,4 +457,3 @@ function PlannerContent({ user }) {
 export default function PlannerPage() {
   return <AuthGate>{(user) => <PlannerContent user={user} />}</AuthGate>;
 }
-

@@ -851,6 +851,7 @@ function normalizePantryItem(row) {
     estimated_price: Number(row.estimated_price || 0),
     price_unit: row.price_unit || '',
     is_free: Boolean(row.is_free),
+    expiry_date: row.expiry_date || '',
     updated_at: row.updated_at || null,
   };
 }
@@ -938,6 +939,7 @@ export async function savePantryItemForUser(user, item) {
     estimated_price: Number(item.estimated_price || 0),
     price_unit: item.price_unit || '',
     is_free: Boolean(item.is_free),
+    expiry_date: item.expiry_date || null,
     updated_at: new Date().toISOString(),
   };
 
@@ -976,6 +978,23 @@ export async function deletePantryItemForUser(user, id) {
     .eq('user_id', user.id);
 
   if (error) throw error;
+}
+
+export async function consumePantryForMeal(user, meal) {
+  const pantry = await loadPantryItemsForUser(user);
+  const updates = [];
+
+  for (const ingredient of meal?.ingredients || []) {
+    const match = pantry.find((item) => String(item.name).trim().toLowerCase() === String(ingredient.name).trim().toLowerCase() && compatibleUnitKey(item.unit) === compatibleUnitKey(ingredient.unit));
+    if (!match) continue;
+    const remainingBase = Math.max(0, toBaseQuantity(match.quantity, match.unit) - toBaseQuantity(ingredient.quantity, ingredient.unit));
+    const remaining = fromBaseQuantity(remainingBase, match.unit);
+    if (remaining <= 0.000001) await deletePantryItemForUser(user, match.id);
+    else await savePantryItemForUser(user, { ...match, quantity: remaining });
+    updates.push({ name: match.name, before: match.quantity, after: remaining, unit: match.unit });
+  }
+
+  return updates;
 }
 
 async function addToPantryItem(user, item) {
@@ -1073,4 +1092,3 @@ export async function addPantryTripForUser(user, trip) {
 
   return normalizePantryTrip({ ...transaction, pantry_transaction_items: transactionItems });
 }
-

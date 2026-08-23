@@ -41,4 +41,3 @@ export function formatWeekRange(weekStartDate) {
 
   return `${start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
 }
-

@@ -192,4 +192,3 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     </div>
   );
 }
-

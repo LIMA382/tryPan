@@ -37,4 +37,3 @@ export default function AppFrame({ user, title, subtitle, children, action, eyeb
     </>
   );
 }
-

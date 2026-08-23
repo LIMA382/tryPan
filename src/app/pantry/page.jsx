@@ -97,6 +97,11 @@ function PantryContent({ user }) {
 
   const pantryValue = useMemo(() => items.reduce((sum, item) => sum + estimatePantryItemValue(item), 0), [items]);
   const suggestedMeals = useMemo(() => suggestMealsFromPantry(meals, items), [meals, items]);
+  const useSoonItems = useMemo(() => {
+    const limit = new Date();
+    limit.setDate(limit.getDate() + 5);
+    return items.filter((item) => item.expiry_date && new Date(`${item.expiry_date}T12:00:00`) <= limit).sort((a, b) => a.expiry_date.localeCompare(b.expiry_date));
+  }, [items]);
   const tripTotal = useMemo(() => tripItems.reduce((sum, item) => sum + estimatePantryItemValue(item), 0), [tripItems]);
   const supermarketSuggestions = useMemo(() => {
     const needle = tripStore.trim().toLowerCase();
@@ -271,6 +276,8 @@ function PantryContent({ user }) {
         </div>
       </section>
 
+      {useSoonItems.length ? <section className="use-soon-panel panel-soft"><div><span className="student-kicker">Use soon</span><h3>Save these before they expire</h3></div><div>{useSoonItems.map((item) => <span key={item.id}><strong>{item.name}</strong><small>{item.expiry_date}</small></span>)}</div></section> : null}
+
       <div className="pantry-layout cleaner-pantry-layout">
         <section className="panel-soft pantry-trip-panel lesson-trip-panel">
           <div className="lesson-topline">
@@ -394,6 +401,7 @@ function PantryContent({ user }) {
                       </div>
                       <input type="number" min="0" step="0.01" value={draft.quantity} onChange={(event) => editItemField(item.id, 'quantity', event.target.value)} />
                       <input value={draft.unit || ''} onChange={(event) => editItemField(item.id, 'unit', event.target.value)} />
+                      <input type="date" aria-label={`${item.name} expiry date`} value={draft.expiry_date || ''} onChange={(event) => editItemField(item.id, 'expiry_date', event.target.value)} />
                       <label className="free-toggle compact"><input type="checkbox" checked={Boolean(draft.is_free)} onChange={(event) => editItemField(item.id, 'is_free', event.target.checked)} />Free</label>
                       <div className="pantry-row-actions">
                         <button type="button" className="soft-btn" disabled={saving} onClick={() => saveItem(item.id)}>Save</button>
@@ -414,4 +422,3 @@ function PantryContent({ user }) {
 export default function PantryPage() {
   return <AuthGate>{(user) => <PantryContent user={user} />}</AuthGate>;
 }
-

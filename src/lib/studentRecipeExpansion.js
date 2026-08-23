@@ -77,4 +77,3 @@ export const studentRecipeExpansion = [
   r('Creamy mushroom rice','A simple risotto-style rice without constant stirring.','Brown mushrooms, add rice and stock, cover and simmer; finish with yogurt and cheese.','dinner',30,3,4.9,['One pot','Vegetarian','Comfort'],[['Rice',250,'g','Pantry'],['Mushrooms',350,'g','Produce'],['Vegetable stock',650,'ml','Pantry'],['Greek yogurt',80,'g','Dairy']]),
   r('Teriyaki tofu rice bowls','Sticky tofu, broccoli and rice for two meal-prep boxes.','Crisp tofu, add teriyaki sauce and broccoli, then serve over cooked rice.','both',25,2,5.2,['Meal prep','Vegan','High protein'],[['Tofu',300,'g','Protein'],['Broccoli',300,'g','Produce'],['Rice',200,'g','Pantry'],['Teriyaki sauce',3,'tbsp','Pantry']]),
 ];
-

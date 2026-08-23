@@ -167,4 +167,3 @@ function GroceryContent({ user }) {
 export default function GroceryPage() {
   return <AuthGate>{(user) => <GroceryContent user={user} />}</AuthGate>;
 }
-

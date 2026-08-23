@@ -48,4 +48,3 @@ export function toggleStudentChallenge(id) {
   localStorage.setItem(PROGRESS_KEY, JSON.stringify(next));
   return next;
 }
-

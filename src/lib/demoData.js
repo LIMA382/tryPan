@@ -360,4 +360,3 @@ export const publicMeals = [
   },
   ...studentRecipeExpansion,
 ];
-

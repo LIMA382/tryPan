@@ -153,4 +153,3 @@ function AccountContent({ user }) {
 export default function AccountPage() {
   return <AuthGate>{(user) => <AccountContent user={user} />}</AuthGate>;
 }
-

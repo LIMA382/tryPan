@@ -711,7 +711,7 @@ textarea { min-height: 88px; resize: vertical; }
 
 .pantry-item-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 96px 80px auto;
+  grid-template-columns: minmax(180px, 1fr) 96px 80px 150px auto;
   gap: 10px;
   align-items: center;
   padding: 12px 0;
@@ -3083,6 +3083,41 @@ textarea:focus-visible,
   }
 }
 
+.use-soon-panel {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  padding: 22px 26px;
+  margin-bottom: 16px;
+  border-left: 5px solid #d58b4b;
+}
+
+.use-soon-panel h3 { margin: 4px 0 0; }
+.use-soon-panel > div:last-child { display: flex; gap: 8px; flex-wrap: wrap; }
+.use-soon-panel > div:last-child span { background: rgba(255,255,255,.72); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; }
+.use-soon-panel strong, .use-soon-panel small { display: block; }
+.use-soon-panel small { color: var(--muted); margin-top: 2px; }
+
+.meal-assistant { padding: 28px; }
+.meal-assistant .card-header { align-items: center; }
+.meal-assistant .card-header p { margin: 6px 0 0; color: var(--muted); }
+.assistant-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 22px; }
+.assistant-card { position: relative; display: flex; gap: 14px; min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 22px; background: rgba(255,255,255,.7); }
+.assistant-card h4 { margin: 0 0 6px; font-size: 20px; }
+.assistant-card p { margin: 0 0 10px; color: var(--muted); }
+.assistant-card small { color: var(--green); }
+.assistant-card a { display: inline-block; margin-top: 12px; font-weight: 800; }
+.assistant-number { flex: 0 0 34px; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; background: var(--green); color: white; font-weight: 900; }
+.assistant-missing, .assistant-ready { margin-top: 9px; font-size: 13px; }
+.assistant-ready { color: #527a43; font-weight: 700; }
+.assistant-source, .assistant-empty { display: block; margin-top: 14px; color: var(--muted); }
+
+@media (max-width: 900px) {
+  .assistant-grid { grid-template-columns: 1fr; }
+  .use-soon-panel { align-items: flex-start; flex-direction: column; }
+}
+
 /* Guided supermarket trip */
 .lesson-trip-panel { overflow: hidden; padding: 0; background: #fffdf7; border: 2px solid rgba(69,68,26,.09); }
 .cleaner-pantry-layout:has(.lesson-trip-panel) { grid-template-columns: 1fr; }
@@ -3276,4 +3311,3 @@ textarea:focus-visible,
   .recipe-facts { grid-template-columns: 1fr 1fr; }
   .cook-mode-grid { grid-template-columns: 1fr; }
 }
-
