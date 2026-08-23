@@ -6,7 +6,7 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { loadProfileForUser, saveProfileForUser } from '@/lib/dataStore';
+import { loadIngredientCatalog, loadProfileForUser, saveProfileForUser, updateCatalogIngredient } from '@/lib/dataStore';
 import { REGIONS, regionLabel } from '@/lib/ingredientCatalog';
 
 function AccountContent({ user }) {
@@ -17,6 +17,10 @@ function AccountContent({ user }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [priceSearch, setPriceSearch] = useState('');
+  const [ingredients, setIngredients] = useState([]);
+  const [priceDrafts, setPriceDrafts] = useState({});
+  const [priceSaving, setPriceSaving] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -31,6 +35,32 @@ function AccountContent({ user }) {
     load();
     return () => { active = false; };
   }, [user]);
+
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
+      const catalog = await loadIngredientCatalog(region, priceSearch);
+      if (!active) return;
+      const visible = catalog.slice(0, 24);
+      setIngredients(visible);
+      setPriceDrafts(Object.fromEntries(visible.map((item) => [item.id, { estimated_price: item.estimated_price || '', price_unit: item.price_unit || item.default_unit || '' }])));
+    }, 180);
+    return () => { active = false; clearTimeout(timer); };
+  }, [region, priceSearch]);
+
+  async function saveIngredientPrice(item) {
+    setPriceSaving(item.id);
+    setMessage('');
+    try {
+      const savedItem = await updateCatalogIngredient(user, { ...item, ...priceDrafts[item.id], region });
+      setIngredients((current) => current.map((entry) => entry.id === item.id ? savedItem : entry));
+      setMessage(`${item.name} price updated.`);
+    } catch (err) {
+      setMessage(err.message || 'Could not update ingredient price.');
+    } finally {
+      setPriceSaving('');
+    }
+  }
 
   async function saveProfile(event) {
     event.preventDefault();
@@ -137,6 +167,21 @@ function AccountContent({ user }) {
           <button type="submit" className="primary-btn" disabled={saving}>{saving ? 'Saving…' : 'Update password'}</button>
         </form>
       </div>
+
+      <section className="panel-soft ingredient-price-zone">
+        <div className="card-header">
+          <div><span className="student-kicker">Product settings</span><h3>Ingredient prices</h3><p>Keep your usual supermarket prices in one simple place.</p></div>
+          <span className="badge">{regionLabel(region)}</span>
+        </div>
+        <div className="field ingredient-price-search"><label htmlFor="price-search">Find a product</label><input id="price-search" value={priceSearch} onChange={(event) => setPriceSearch(event.target.value)} placeholder="Search eggs, milk, rice…" /></div>
+        <div className="ingredient-price-list">
+          {ingredients.map((item) => {
+            const draft = priceDrafts[item.id] || {};
+            return <div className="ingredient-price-row" key={item.id}><div><strong>{item.name}</strong><small>{item.category}</small></div><label><span>Price €</span><input type="number" min="0" step="0.01" value={draft.estimated_price} onChange={(event) => setPriceDrafts((current) => ({ ...current, [item.id]: { ...draft, estimated_price: event.target.value } }))} /></label><label><span>Per</span><input value={draft.price_unit} onChange={(event) => setPriceDrafts((current) => ({ ...current, [item.id]: { ...draft, price_unit: event.target.value } }))} placeholder={item.default_unit || 'unit'} /></label><button type="button" className="soft-btn" disabled={priceSaving === item.id} onClick={() => saveIngredientPrice(item)}>{priceSaving === item.id ? 'Saving…' : 'Save price'}</button></div>;
+          })}
+          {!ingredients.length && <p>No products match that search.</p>}
+        </div>
+      </section>
 
       <section className="account-footer-actions panel-soft">
         <div>
