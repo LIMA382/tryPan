@@ -2,13 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import AppNav from '@/components/AppNav';
 import MealCard from '@/components/MealCard';
 import MealDetailsModal from '@/components/MealDetailsModal';
 import { copyPublicMealForUser, loadPublicMeals } from '@/lib/dataStore';
 import { supabase, hasSupabaseEnv } from '@/lib/supabaseClient';
-import { motionTokens } from '@/lib/motion';
 import { recipePath } from '@/lib/recipeUtils';
 import { useRouter } from 'next/navigation';
 
@@ -31,7 +29,6 @@ function BrowseSkeleton() {
 
 export default function BrowsePage() {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
   const [user, setUser] = useState(null);
   const [meals, setMeals] = useState([]);
   const [filter, setFilter] = useState('All');
@@ -42,6 +39,7 @@ export default function BrowsePage() {
   const [error, setError] = useState('');
   const [savedId, setSavedId] = useState(null);
   const [savingId, setSavingId] = useState(null);
+  const [visibleLimit, setVisibleLimit] = useState(24);
 
   useEffect(() => {
     let active = true;
@@ -96,8 +94,10 @@ export default function BrowsePage() {
   }, [meals, filter, sort, search]);
 
   useEffect(() => {
-    visibleMeals.slice(0, 12).forEach((meal) => router.prefetch(recipePath(meal)));
+    visibleMeals.slice(0, 8).forEach((meal) => router.prefetch(recipePath(meal)));
   }, [router, visibleMeals]);
+
+  useEffect(() => setVisibleLimit(24), [filter, sort, search]);
 
   async function save(meal) {
     if (!user) return;
@@ -158,22 +158,23 @@ export default function BrowsePage() {
         )}
 
         {!loading && visibleMeals.length > 0 && (
-          <motion.div layout className="grid meal-grid public-grid clean-public-grid">
-            <AnimatePresence>
-              {visibleMeals.map((meal) => (
-                <motion.div key={meal.id} layout initial={reduceMotion ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? undefined : { opacity: 0, scale: 0.97 }} transition={{ duration: reduceMotion ? 0 : motionTokens.base, ease: motionTokens.ease }}>
+          <div className="grid meal-grid public-grid clean-public-grid">
+              {visibleMeals.slice(0, visibleLimit).map((meal) => (
+                <div key={meal.id}>
                   <MealCard
                     meal={meal}
                     publicView
                     compact
-                    onOpen={() => router.push(recipePath(meal))}
-                    actions={<Link className="soft-btn" href={recipePath(meal)}>View recipe</Link>}
+                    onOpen={() => setSelectedMeal(meal)}
                   />
-                </motion.div>
+                </div>
               ))}
-            </AnimatePresence>
-          </motion.div>
+          </div>
         )}
+
+        {!loading && visibleMeals.length > visibleLimit ? (
+          <div className="browse-load-more"><button className="soft-btn" type="button" onClick={() => setVisibleLimit((current) => current + 24)}>Show more recipes</button><span>{visibleLimit} of {visibleMeals.length}</span></div>
+        ) : null}
       </main>
 
       <MealDetailsModal
@@ -181,11 +182,10 @@ export default function BrowsePage() {
         onClose={() => setSelectedMeal(null)}
         guest={!user}
         actions={selectedMeal ? (
-          user ? (
-            <button className="primary-btn" disabled={savingId === selectedMeal.id} onClick={() => save(selectedMeal)}>{savedId === selectedMeal.id ? 'Saved to my meals' : savingId === selectedMeal.id ? 'Saving…' : 'Save to my meals'}</button>
-          ) : (
-            <Link className="primary-btn" href="/login">Log in to save</Link>
-          )
+          <>
+            <Link className="soft-btn" href={recipePath(selectedMeal)}>Open full recipe</Link>
+            {user ? <button className="primary-btn" disabled={savingId === selectedMeal.id} onClick={() => save(selectedMeal)}>{savedId === selectedMeal.id ? 'Saved to my meals' : savingId === selectedMeal.id ? 'Saving…' : 'Save to my meals'}</button> : <Link className="primary-btn" href="/login">Log in to save</Link>}
+          </>
         ) : null}
       />
     </>

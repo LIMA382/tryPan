@@ -1,5 +1,5 @@
 import 'server-only';
-import { publicMeals } from './demoData';
+import { publicMeals, seedMeals } from './demoData';
 import { recipeImageForMeal, recipeSlug } from './recipeUtils';
 
 function normalizeIngredient(item, index, mealId) {
@@ -41,7 +41,14 @@ function normalizeRecipe(meal, index, source = 'curated') {
 }
 
 export function getCuratedRecipes() {
-  return publicMeals.map((meal, index) => normalizeRecipe(meal, index));
+  const recipes = [...seedMeals.filter((meal) => meal.is_public), ...publicMeals];
+  const seen = new Set();
+  return recipes.filter((meal) => {
+    const key = String(meal.title || '').toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).map((meal, index) => normalizeRecipe(meal, index));
 }
 
 async function getDatabaseRecipes() {
@@ -74,4 +81,3 @@ export async function getRecipeBySlug(slugOrId) {
   const recipes = await getPublicRecipes();
   return recipes.find((meal) => meal.slug === value || String(meal.id).toLowerCase() === value) || null;
 }
-
