@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { copyPublicMealForUser } from '@/lib/dataStore';
 import { hasSupabaseEnv, supabase } from '@/lib/supabaseClient';
+import { rememberRecentRecipe, rememberSavedRecipe } from '@/lib/libraryHistory';
 
 export default function RecipeActions({ meal }) {
   const [user, setUser] = useState(null);
@@ -12,6 +13,7 @@ export default function RecipeActions({ meal }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    rememberRecentRecipe(meal);
     if (!hasSupabaseEnv()) { setUser({ id: 'demo-user', email: 'demo@trypan.app' }); setReady(true); return; }
     supabase?.auth.getSession().then(({ data }) => { setUser(data?.session?.user || null); setReady(true); });
   }, []);
@@ -19,7 +21,11 @@ export default function RecipeActions({ meal }) {
   async function saveRecipe() {
     if (!user || saving) return;
     setSaving(true);
-    try { await copyPublicMealForUser(user, meal); setSaved(true); } finally { setSaving(false); }
+    try {
+      const copied = await copyPublicMealForUser(user, meal);
+      rememberSavedRecipe(copied || meal);
+      setSaved(true);
+    } finally { setSaving(false); }
   }
 
   const planPath = `/plan/week?recipe=${encodeURIComponent(meal.id)}`;
@@ -37,4 +43,3 @@ export default function RecipeActions({ meal }) {
     </aside>
   );
 }
-

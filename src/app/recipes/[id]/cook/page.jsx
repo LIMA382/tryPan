@@ -7,6 +7,7 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { consumePantryForMeal, loadAllVisibleMeals, saveLeftoversForUser } from '@/lib/dataStore';
 import { recipeSlug } from '@/lib/recipeUtils';
+import { rememberCookedRecipe } from '@/lib/libraryHistory';
 
 function CookContent({ user }) {
   const { id } = useParams();
@@ -27,8 +28,7 @@ function CookContent({ user }) {
     setPantryUpdates(updates);
     setLeftovers(remaining);
     setDone(true);
-    const history = JSON.parse(localStorage.getItem('trypan.cooked-recipes.v1') || '[]');
-    localStorage.setItem('trypan.cooked-recipes.v1', JSON.stringify([{ id: meal.id, title: meal.title, cooked_at: new Date().toISOString() }, ...history].slice(0, 50)));
+    rememberCookedRecipe(meal);
   }
 
   return <AppFrame user={user} title={meal.title} subtitle="A calm, distraction-free cooking mode." eyebrow="Cooking mode">

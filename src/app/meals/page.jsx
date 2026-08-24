@@ -9,7 +9,9 @@ import AppFrame from '@/components/AppFrame';
 import MealCard from '@/components/MealCard';
 import MealForm from '@/components/MealForm';
 import MealDetailsModal from '@/components/MealDetailsModal';
-import { deleteMealForUser, loadMyMeals, loadProfileForUser, saveMealForUser } from '@/lib/dataStore';
+import { deleteMealForUser, loadAllVisibleMeals, loadMyMeals, loadProfileForUser, saveMealForUser } from '@/lib/dataStore';
+import { getLibraryHistory } from '@/lib/libraryHistory';
+import { recipePath } from '@/lib/recipeUtils';
 
 function MealsContent({ user }) {
   const pathname = usePathname();
@@ -23,15 +25,20 @@ function MealsContent({ user }) {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [libraryTab, setLibraryTab] = useState('created');
+  const [history, setHistory] = useState({ saved: [], cooked: [], recent: [] });
+  const [visibleCatalog, setVisibleCatalog] = useState([]);
 
   const load = useCallback(async function load() {
     setLoading(true);
     setError('');
 
     try {
-      const [loadedMeals, loadedProfile] = await Promise.all([loadMyMeals(user), loadProfileForUser(user)]);
+      const [loadedMeals, loadedProfile, loadedCatalog] = await Promise.all([loadMyMeals(user), loadProfileForUser(user), loadAllVisibleMeals(user)]);
       setMeals(loadedMeals);
       setProfile(loadedProfile);
+      setVisibleCatalog(loadedCatalog);
+      setHistory(getLibraryHistory());
     } catch (err) {
       setError(err.message || 'Could not load meals.');
     } finally {
@@ -50,16 +57,28 @@ function MealsContent({ user }) {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    const requested = searchParams.get('tab');
+    if (['created', 'saved', 'cooked', 'recent'].includes(requested)) setLibraryTab(requested);
+  }, [searchParams]);
+
+  const tabMeals = useMemo(() => {
+    if (!pathname.startsWith('/library') || libraryTab === 'created') return meals;
+    const entries = history[libraryTab] || [];
+    const catalog = new Map([...meals, ...visibleCatalog].map((meal) => [String(meal.id), meal]));
+    return entries.map((entry) => catalog.get(String(entry.id))).filter(Boolean);
+  }, [history, libraryTab, meals, pathname, visibleCatalog]);
+
   const filters = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Quick', 'Leftovers', 'Pantry', 'Public', 'Private'];
   const visibleMeals = useMemo(() => {
-    if (filter === 'All') return meals;
-    if (filter === 'Public') return meals.filter((meal) => meal.is_public);
-    if (filter === 'Private') return meals.filter((meal) => !meal.is_public);
-    return meals.filter((meal) => {
+    if (filter === 'All') return tabMeals;
+    if (filter === 'Public') return tabMeals.filter((meal) => meal.is_public);
+    if (filter === 'Private') return tabMeals.filter((meal) => !meal.is_public);
+    return tabMeals.filter((meal) => {
       const tagText = (meal.tags || []).join(' ').toLowerCase();
       return meal.meal_type === filter.toLowerCase() || meal.meal_type === 'both' || tagText.includes(filter.toLowerCase());
     });
-  }, [meals, filter]);
+  }, [tabMeals, filter]);
 
   function startNewMeal() {
     setEditingMeal(null);
@@ -110,10 +129,10 @@ function MealsContent({ user }) {
     >
       {pathname.startsWith('/library') ? (
         <nav className="library-tabs" aria-label="Library sections">
-          <Link className="active" href="/library/created">Created <span>{meals.length}</span></Link>
-          <span title="Saved recipes will appear here as the community grows">Saved</span>
-          <span title="Recently cooked recipes will appear here">Cooked</span>
-          <span title="Recently opened recipes will appear here">Recent</span>
+          <Link className={libraryTab === 'created' ? 'active' : ''} href="/library/created?tab=created">Created <span>{meals.length}</span></Link>
+          <Link className={libraryTab === 'saved' ? 'active' : ''} href="/library/created?tab=saved">Saved <span>{history.saved.length}</span></Link>
+          <Link className={libraryTab === 'cooked' ? 'active' : ''} href="/library/created?tab=cooked">Cooked <span>{history.cooked.length}</span></Link>
+          <Link className={libraryTab === 'recent' ? 'active' : ''} href="/library/created?tab=recent">Recent <span>{history.recent.length}</span></Link>
         </nav>
       ) : null}
       {error && <div className="notice error-notice">{error}</div>}
@@ -165,9 +184,9 @@ function MealsContent({ user }) {
 
       {!loading && !visibleMeals.length ? (
         <div className="card empty-state-card">
-          <h3>{meals.length ? 'No meals match this filter' : 'No meals yet'}</h3>
-          <p>{meals.length ? 'Try All or another tag.' : 'Add the first meal you already know how to cook. Leftovers and easy meals count too.'}</p>
-          <button className="primary-btn" onClick={startNewMeal}>{meals.length ? 'Add another meal' : 'Add your first meal'}</button>
+          <h3>{tabMeals.length ? 'No meals match this filter' : libraryTab === 'created' ? 'No meals yet' : `No ${libraryTab} recipes yet`}</h3>
+          <p>{tabMeals.length ? 'Try All or another tag.' : libraryTab === 'saved' ? 'Save a recipe from Discover and it will appear here.' : libraryTab === 'cooked' ? 'Complete a recipe in Cooking mode and it will appear here.' : libraryTab === 'recent' ? 'Recipes you open will appear here for quick access.' : 'Add the first meal you already know how to cook. Leftovers and easy meals count too.'}</p>
+          {libraryTab === 'created' ? <button className="primary-btn" onClick={startNewMeal}>{meals.length ? 'Add another meal' : 'Add your first meal'}</button> : <Link className="primary-btn" href="/discover">Browse recipes</Link>}
         </div>
       ) : null}
 
@@ -185,12 +204,12 @@ function MealsContent({ user }) {
               >
                 <MealCard
                   meal={meal}
-                  onOpen={() => window.location.assign(`/recipes/${meal.id}`)}
+                  onOpen={() => window.location.assign(recipePath(meal))}
                   actions={
                     <div className="meal-card-actions">
-                      <Link className="soft-btn" href={`/recipes/${meal.id}`}>Open</Link>
-                      <button className="soft-btn" onClick={() => startEditMeal(meal)}>Edit</button>
-                      <button className="danger-btn" onClick={() => remove(meal.id)}>Delete</button>
+                      <Link className="soft-btn" href={recipePath(meal)}>Open</Link>
+                      {meal.user_id === user.id || meals.some((item) => item.id === meal.id) ? <button className="soft-btn" onClick={() => startEditMeal(meal)}>Edit</button> : null}
+                      {meal.user_id === user.id || meals.some((item) => item.id === meal.id) ? <button className="danger-btn" onClick={() => remove(meal.id)}>Delete</button> : null}
                     </div>
                   }
                 />
