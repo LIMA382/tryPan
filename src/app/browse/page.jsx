@@ -95,6 +95,10 @@ export default function BrowsePage() {
     return list;
   }, [meals, filter, sort, search]);
 
+  useEffect(() => {
+    visibleMeals.slice(0, 12).forEach((meal) => router.prefetch(recipePath(meal)));
+  }, [router, visibleMeals]);
+
   async function save(meal) {
     if (!user) return;
     setError('');

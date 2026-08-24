@@ -91,6 +91,10 @@ function MealsContent({ user }) {
     });
   }, [tabMeals, filter]);
 
+  useEffect(() => {
+    visibleMeals.slice(0, 12).forEach((meal) => router.prefetch(recipePath(meal)));
+  }, [router, visibleMeals]);
+
   function startNewMeal() {
     setEditingMeal(null);
     setShowForm(true);

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import AppNav from './AppNav';
 import PlanSubnav from './PlanSubnav';
 import { motionTokens } from '@/lib/motion';
+import AppWarmup from './AppWarmup';
 
 export default function AppFrame({ user, title, subtitle, children, action, eyebrow = 'tryPan' }) {
   const pathname = usePathname();
@@ -12,6 +13,7 @@ export default function AppFrame({ user, title, subtitle, children, action, eyeb
 
   return (
     <>
+      <AppWarmup user={user} />
       <AppNav user={user} />
 
       <motion.div

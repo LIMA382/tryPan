@@ -235,6 +235,9 @@ function cachedData(key, loader, maxAge = 30000) {
 function clearMealCache() {
   for (const key of appDataCache.keys()) if (key.startsWith('meals:')) appDataCache.delete(key);
 }
+function clearCachedPrefix(prefix) {
+  for (const key of appDataCache.keys()) if (key.startsWith(prefix)) appDataCache.delete(key);
+}
 
 function cleanTags(tags) {
   if (Array.isArray(tags)) return tags.map(String).map((x) => x.trim()).filter(Boolean);
@@ -376,22 +379,15 @@ export async function loadProfileForUser(user) {
 
   if (!user?.id || !hasSupabaseEnv() || !supabase) return fallback;
 
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (error || !data) return fallback;
-
-  return {
-    ...fallback,
-    ...data,
-    region: normalizeRegion(data.region || data.country_region || fallback.region),
-  };
+  return cachedData(`profile:${user.id}`, async () => {
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+    if (error || !data) return fallback;
+    return { ...fallback, ...data, region: normalizeRegion(data.region || data.country_region || fallback.region) };
+  }, 60000);
 }
 
 export async function saveProfileForUser(user, profile) {
+  clearCachedPrefix(`profile:${user.id}`);
   const region = normalizeRegion(profile.region);
   const displayName = String(profile.display_name || '').trim();
 
@@ -704,25 +700,20 @@ export async function loadPlanForUser(user, weekStartDate = getMonday()) {
     return plan.week_start_date === weekStartDate ? plan : { ...emptyPlan(), week_start_date: weekStartDate };
   }
 
-  const planRow = await getOrCreateWeekPlan(user, weekStartDate);
-
-  const planned = await throwIfError(
-    await supabase.from('planned_meals').select('*').eq('weekly_plan_id', planRow.id)
-  );
-
-  const plan = emptyPlan();
-  plan.id = planRow.id;
-  plan.week_start_date = planRow.week_start_date;
-
-  for (const row of planned || []) {
-    plan.slots[`${row.day_of_week}-${row.slot}`] = row.meal_id;
-  }
-
-  return plan;
+  return cachedData(`plan:${user.id}:${weekStartDate}`, async () => {
+    const planRow = await getOrCreateWeekPlan(user, weekStartDate);
+    const planned = await throwIfError(await supabase.from('planned_meals').select('*').eq('weekly_plan_id', planRow.id));
+    const plan = emptyPlan();
+    plan.id = planRow.id;
+    plan.week_start_date = planRow.week_start_date;
+    for (const row of planned || []) plan.slots[`${row.day_of_week}-${row.slot}`] = row.meal_id;
+    return plan;
+  });
 }
 
 export async function setPlannedMealForUser(user, plan, day, slot, mealId) {
   if (isDemo()) return localSetPlannedMeal(day, slot, mealId);
+  clearCachedPrefix(`plan:${user.id}:`);
 
   const planId = plan?.id || (await getOrCreateWeekPlan(user, plan?.week_start_date || getMonday())).id;
 
@@ -919,33 +910,25 @@ function pantryMatchQuery(user, item) {
 export async function loadPantryItemsForUser(user) {
   if (!hasSupabaseEnv() || !supabase) return [];
 
-  const { data, error } = await supabase
-    .from('pantry_items')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('category', { ascending: true })
-    .order('name', { ascending: true });
-
-  if (error) throw error;
-  return (data || []).map(normalizePantryItem);
+  return cachedData(`pantry:items:${user.id}`, async () => {
+    const { data, error } = await supabase.from('pantry_items').select('*').eq('user_id', user.id).order('category', { ascending: true }).order('name', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(normalizePantryItem);
+  });
 }
 
 export async function loadPantryTripsForUser(user) {
   if (!hasSupabaseEnv() || !supabase) return [];
 
-  const { data, error } = await supabase
-    .from('pantry_transactions')
-    .select('*, pantry_transaction_items(*)')
-    .eq('user_id', user.id)
-    .order('bought_at', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  if (error) throw error;
-  return (data || []).map(normalizePantryTrip);
+  return cachedData(`pantry:trips:${user.id}`, async () => {
+    const { data, error } = await supabase.from('pantry_transactions').select('*, pantry_transaction_items(*)').eq('user_id', user.id).order('bought_at', { ascending: false }).order('created_at', { ascending: false }).limit(20);
+    if (error) throw error;
+    return (data || []).map(normalizePantryTrip);
+  });
 }
 
 export async function savePantryItemForUser(user, item) {
+  clearCachedPrefix(`pantry:items:${user?.id}`);
   if (!hasSupabaseEnv() || !supabase) return normalizePantryItem({ ...item, user_id: user?.id });
 
   const payload = {
@@ -988,6 +971,7 @@ export async function savePantryItemForUser(user, item) {
 }
 
 export async function deletePantryItemForUser(user, id) {
+  clearCachedPrefix(`pantry:items:${user?.id}`);
   if (!hasSupabaseEnv() || !supabase) return;
 
   const { error } = await supabase
@@ -1077,6 +1061,7 @@ async function addToPantryItem(user, item) {
 }
 
 export async function addPantryTripForUser(user, trip) {
+  clearCachedPrefix(`pantry:`);
   if (!hasSupabaseEnv() || !supabase) return null;
 
   const cleanItems = (trip.items || [])
