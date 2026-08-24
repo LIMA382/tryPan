@@ -16,9 +16,12 @@ export default function AuthGate({ children }) {
       return;
     }
 
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) router.push('/login');
-      setUser(data.user || null);
+    // getSession reads the locally cached session. getUser performs a network
+    // request on every protected-page navigation and made the app feel sluggish.
+    supabase.auth.getSession().then(({ data }) => {
+      const sessionUser = data?.session?.user || null;
+      if (!sessionUser) router.replace('/login');
+      setUser(sessionUser);
       setReady(true);
     });
   }, [router]);

@@ -12,6 +12,7 @@ import MealDetailsModal from '@/components/MealDetailsModal';
 import { deleteMealForUser, loadAllVisibleMeals, loadMyMeals, loadProfileForUser, saveMealForUser } from '@/lib/dataStore';
 import { getLibraryHistory } from '@/lib/libraryHistory';
 import { recipePath } from '@/lib/recipeUtils';
+import { hasSupabaseEnv } from '@/lib/supabaseClient';
 
 function MealsContent({ user }) {
   const pathname = usePathname();
@@ -34,9 +35,13 @@ function MealsContent({ user }) {
     setError('');
 
     try {
-      const [loadedMeals, loadedProfile, loadedCatalog] = await Promise.all([loadMyMeals(user), loadProfileForUser(user), loadAllVisibleMeals(user)]);
+      // The visible-meals query already includes the user's meals. Reusing it
+      // avoids fetching every recipe and ingredient twice on each Library visit.
+      const loadedCatalog = await loadAllVisibleMeals(user);
+      const loadedMeals = hasSupabaseEnv()
+        ? loadedCatalog.filter((meal) => meal.user_id === user.id)
+        : await loadMyMeals(user);
       setMeals(loadedMeals);
-      setProfile(loadedProfile);
       setVisibleCatalog(loadedCatalog);
       setHistory(getLibraryHistory());
     } catch (err) {
@@ -56,6 +61,11 @@ function MealsContent({ user }) {
       setShowForm(true);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!showForm || profile) return;
+    loadProfileForUser(user).then(setProfile).catch(() => setProfile({ region: 'pt' }));
+  }, [profile, showForm, user]);
 
   useEffect(() => {
     const requested = searchParams.get('tab');

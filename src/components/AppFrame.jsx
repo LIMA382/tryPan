@@ -17,9 +17,9 @@ export default function AppFrame({ user, title, subtitle, children, action, eyeb
       <motion.div
         key={pathname}
         className="page-shell app-layout no-sidebar"
-        initial={reduceMotion ? false : { opacity: 0, y: 14, filter: 'blur(5px)' }}
-        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-        transition={{ duration: reduceMotion ? 0 : motionTokens.slow, ease: motionTokens.ease }}
+        initial={reduceMotion ? false : { opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: reduceMotion ? 0 : motionTokens.fast, ease: motionTokens.ease }}
       >
         <main className="main">
           {pathname?.startsWith('/plan') ? <PlanSubnav /> : null}
