@@ -157,7 +157,7 @@ function GroceryContent({ user }) {
         ) : null}
 
         {!loading && !pantryAwareList.length ? (
-          <div className="card empty-state-card"><h3>Plan meals first</h3><p>Add meals to your weekly planner and tryPan will compare them with your pantry.</p><a className="primary-btn" href="/plan/week">Open planner</a></div>
+          <div className="card empty-state-card"><h3>Plan meals first</h3><p>Add meals to your weekly planner and tryPan will compare them with your pantry.</p><Link className="primary-btn" href="/plan/week">Open planner</Link></div>
         ) : null}
       </div>
     </AppFrame>

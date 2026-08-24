@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
@@ -16,6 +16,7 @@ import { hasSupabaseEnv } from '@/lib/supabaseClient';
 
 function MealsContent({ user }) {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [meals, setMeals] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -214,7 +215,7 @@ function MealsContent({ user }) {
               >
                 <MealCard
                   meal={meal}
-                  onOpen={() => window.location.assign(recipePath(meal))}
+                  onOpen={() => router.push(recipePath(meal))}
                   actions={
                     <div className="meal-card-actions">
                       <Link className="soft-btn" href={recipePath(meal)}>Open</Link>

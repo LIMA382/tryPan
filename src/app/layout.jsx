@@ -1,6 +1,7 @@
 import localFont from 'next/font/local';
 import './globals.css';
 import PWARegister from '@/components/PWARegister';
+import NavigationProgress from '@/components/NavigationProgress';
 import { SITE_URL } from '@/lib/site';
 
 const baloo = localFont({
@@ -73,7 +74,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={baloo.variable}><PWARegister />{children}</body>
+      <body className={baloo.variable}><NavigationProgress /><PWARegister />{children}</body>
     </html>
   );
 }

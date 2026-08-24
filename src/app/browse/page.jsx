@@ -10,6 +10,7 @@ import { copyPublicMealForUser, loadPublicMeals } from '@/lib/dataStore';
 import { supabase, hasSupabaseEnv } from '@/lib/supabaseClient';
 import { motionTokens } from '@/lib/motion';
 import { recipePath } from '@/lib/recipeUtils';
+import { useRouter } from 'next/navigation';
 
 const FILTERS = ['All', 'Student picks', '15 minutes', 'Budget', 'Breakfast', 'Soup', 'Meal prep', 'Microwave', 'Vegetarian', 'High protein', 'Dinner', 'Lunch'];
 
@@ -29,6 +30,7 @@ function BrowseSkeleton() {
 }
 
 export default function BrowsePage() {
+  const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [user, setUser] = useState(null);
   const [meals, setMeals] = useState([]);
@@ -160,7 +162,7 @@ export default function BrowsePage() {
                     meal={meal}
                     publicView
                     compact
-                    onOpen={() => window.location.assign(recipePath(meal))}
+                    onOpen={() => router.push(recipePath(meal))}
                     actions={<Link className="soft-btn" href={recipePath(meal)}>View recipe</Link>}
                   />
                 </motion.div>

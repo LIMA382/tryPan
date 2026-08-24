@@ -222,6 +222,20 @@ function isDemo() {
   return !hasSupabaseEnv() || !supabase;
 }
 
+// Keep data warm while the user moves around the client-side app. This also
+// deduplicates simultaneous requests from pages that need the same meal list.
+const appDataCache = new Map();
+function cachedData(key, loader, maxAge = 30000) {
+  const current = appDataCache.get(key);
+  if (current && Date.now() - current.createdAt < maxAge) return current.promise;
+  const promise = Promise.resolve().then(loader).catch((error) => { appDataCache.delete(key); throw error; });
+  appDataCache.set(key, { createdAt: Date.now(), promise });
+  return promise;
+}
+function clearMealCache() {
+  for (const key of appDataCache.keys()) if (key.startsWith('meals:')) appDataCache.delete(key);
+}
+
 function cleanTags(tags) {
   if (Array.isArray(tags)) return tags.map(String).map((x) => x.trim()).filter(Boolean);
   return String(tags || '').split(',').map((x) => x.trim()).filter(Boolean);
@@ -545,41 +559,41 @@ export async function loadAllVisibleMeals(user) {
     return [...own, ...localGetPublicMeals().filter((meal) => !ownTitles.has(meal.title.toLowerCase()))];
   }
 
-  const data = await throwIfError(
-    await supabase
-      .from('meals')
-      .select('*, meal_ingredients(*, ingredient_catalog(*))')
-      .or(`user_id.eq.${user.id},is_public.eq.true`)
-      .order('created_at', { ascending: false })
-  );
-
-  const visible = (data || []).map(normalizeMeal);
-  const existingTitles = new Set(visible.map((meal) => meal.title.toLowerCase()));
-  const curated = localGetPublicMeals().filter((meal) => !existingTitles.has(meal.title.toLowerCase()));
-  return [...visible, ...curated];
+  return cachedData(`meals:visible:${user.id}`, async () => {
+    const data = await throwIfError(
+      await supabase
+        .from('meals')
+        .select('*, meal_ingredients(*, ingredient_catalog(*))')
+        .or(`user_id.eq.${user.id},is_public.eq.true`)
+        .order('created_at', { ascending: false })
+    );
+    const visible = (data || []).map(normalizeMeal);
+    const existingTitles = new Set(visible.map((meal) => meal.title.toLowerCase()));
+    const curated = localGetPublicMeals().filter((meal) => !existingTitles.has(meal.title.toLowerCase()));
+    return [...visible, ...curated];
+  });
 }
 
 export async function loadPublicMeals(user = null) {
   if (!hasSupabaseEnv() || !supabase) return localGetPublicMeals();
 
-  const data = await throwIfError(
-    await supabase
-      .from('meals')
-      .select('*, meal_ingredients(*, ingredient_catalog(*))')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false })
-  );
-
-  const publicRows = (data || [])
-    .filter((meal) => meal.user_id !== user?.id)
-    .map(normalizeMeal);
-
-  const existingTitles = new Set(publicRows.map((meal) => meal.title.toLowerCase()));
-  const curated = localGetPublicMeals().filter((meal) => !existingTitles.has(meal.title.toLowerCase()));
-  return [...publicRows, ...curated];
+  return cachedData(`meals:public:${user?.id || 'guest'}`, async () => {
+    const data = await throwIfError(
+      await supabase
+        .from('meals')
+        .select('*, meal_ingredients(*, ingredient_catalog(*))')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+    );
+    const publicRows = (data || []).filter((meal) => meal.user_id !== user?.id).map(normalizeMeal);
+    const existingTitles = new Set(publicRows.map((meal) => meal.title.toLowerCase()));
+    const curated = localGetPublicMeals().filter((meal) => !existingTitles.has(meal.title.toLowerCase()));
+    return [...publicRows, ...curated];
+  });
 }
 
 export async function saveMealForUser(user, meal) {
+  clearMealCache();
   const ingredients = (meal.ingredients || [])
     .filter((ing) => String(ing.name || '').trim())
     .map((ing) => ({
@@ -653,6 +667,7 @@ export async function saveMealForUser(user, meal) {
 }
 
 export async function deleteMealForUser(user, id) {
+  clearMealCache();
   if (isDemo()) {
     const next = localGetMeals().filter((m) => m.id !== id);
     localSaveMeals(next);
