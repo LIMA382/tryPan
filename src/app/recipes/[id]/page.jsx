@@ -1,88 +1,94 @@
-'use client';
-
+import Image from 'next/image';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import AppNav from '@/components/AppNav';
-import { copyPublicMealForUser, loadAllVisibleMeals, loadPublicMeals } from '@/lib/dataStore';
-import { hasSupabaseEnv, supabase } from '@/lib/supabaseClient';
+import { notFound, permanentRedirect } from 'next/navigation';
+import RecipeActions from '@/components/RecipeActions';
+import RecipeNavigation from '@/components/RecipeNavigation';
+import { getCuratedRecipes, getPublicRecipes, getRecipeBySlug } from '@/lib/recipeCatalog';
+import { SITE_URL } from '@/lib/site';
 
 const money = (value) => `€${Number(value || 0).toFixed(2)}`;
 
-export default function RecipePage() {
-  const { id } = useParams();
-  const [user, setUser] = useState(null);
-  const [meal, setMeal] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState(false);
+function instructionSteps(instructions) {
+  return String(instructions || '').split(/(?<=[.!?])\s+/).map((step) => step.trim()).filter(Boolean);
+}
+export function generateStaticParams() {
+  return getCuratedRecipes().map((meal) => ({ id: meal.slug }));
+}
 
-  useEffect(() => {
-    let active = true;
-    async function load() {
-      let currentUser = !hasSupabaseEnv() ? { id: 'demo-user', email: 'demo@trypan.app' } : null;
-      if (hasSupabaseEnv() && supabase) {
-        const { data } = await supabase.auth.getSession();
-        currentUser = data?.session?.user || null;
-      }
-      const meals = currentUser ? await loadAllVisibleMeals(currentUser) : await loadPublicMeals();
-      const found = meals.find((item) => String(item.id) === decodeURIComponent(String(id)));
-      if (!active) return;
-      setUser(currentUser);
-      setMeal(found || null);
-      setLoading(false);
-      if (found && typeof window !== 'undefined') {
-        const recent = JSON.parse(localStorage.getItem('trypan.recent-recipes.v1') || '[]').filter((item) => item.id !== found.id);
-        localStorage.setItem('trypan.recent-recipes.v1', JSON.stringify([{ id: found.id, title: found.title, viewed_at: new Date().toISOString() }, ...recent].slice(0, 20)));
-      }
-    }
-    load().catch(() => setLoading(false));
-    return () => { active = false; };
-  }, [id]);
+export async function generateMetadata({ params }) {
+  const meal = await getRecipeBySlug(params.id);
+  if (!meal) return { title: 'Recipe not found', robots: { index: false, follow: false } };
+  const canonical = `/recipes/${meal.slug}`;
+  const description = `${meal.description} Ready in ${meal.prep_time} minutes for about ${money(Number(meal.price || 0) / Math.max(1, meal.servings))} per serving.`;
+  return {
+    title: `${meal.title} — affordable student recipe`,
+    description,
+    alternates: { canonical },
+    openGraph: { type: 'article', url: canonical, title: meal.title, description, images: [{ url: meal.image, width: 1200, height: 800, alt: meal.title }] },
+    twitter: { card: 'summary_large_image', title: meal.title, description, images: [meal.image] },
+  };
+}
 
-  async function saveRecipe() {
-    if (!user || !meal) return;
-    await copyPublicMealForUser(user, meal);
-    setSaved(true);
-  }
+export default async function RecipePage({ params }) {
+  const meal = await getRecipeBySlug(params.id);
+  if (!meal) notFound();
+  if (decodeURIComponent(params.id) !== meal.slug) permanentRedirect(`/recipes/${meal.slug}`);
+
+  const steps = instructionSteps(meal.instructions);
+  const recipes = await getPublicRecipes();
+  const related = recipes.filter((item) => item.slug !== meal.slug && item.meal_type === meal.meal_type).slice(0, 3);
+  const canonicalUrl = `${SITE_URL}/recipes/${meal.slug}`;
+  const jsonLd = {
+    '@context': 'https://schema.org', '@type': 'Recipe', name: meal.title, description: meal.description,
+    image: [`${SITE_URL}${meal.image}`],
+    author: { '@type': meal.creator === 'tryPan Student Kitchen' ? 'Organization' : 'Person', name: meal.creator },
+    prepTime: `PT${meal.prep_time}M`, totalTime: `PT${meal.prep_time}M`,
+    recipeYield: `${meal.servings} ${meal.servings === 1 ? 'serving' : 'servings'}`,
+    recipeCategory: meal.meal_type, keywords: meal.tags.join(', '),
+    recipeIngredient: meal.ingredients.map((item) => `${item.quantity} ${item.unit} ${item.name}`.trim()),
+    recipeInstructions: steps.map((text, index) => ({ '@type': 'HowToStep', position: index + 1, text, url: `${canonicalUrl}#step-${index + 1}` })),
+    mainEntityOfPage: canonicalUrl,
+  };
 
   return (
     <>
-      <AppNav user={user} />
+      <RecipeNavigation />
       <main className="page-shell recipe-detail-page page-transition">
-        <nav className="recipe-breadcrumb" aria-label="Breadcrumb"><Link href="/discover">Discover</Link><span>›</span><span>{meal?.title || 'Recipe'}</span></nav>
-        {loading ? <div className="card skeleton-card"><div className="skeleton-line wide" /><div className="skeleton-line" /></div> : null}
-        {!loading && !meal ? <div className="card empty-state-card"><h1>Recipe not found</h1><p>It may be private or no longer available.</p><Link className="primary-btn" href="/discover">Discover recipes</Link></div> : null}
-        {meal ? (
-          <article className="recipe-detail-layout">
-            <header className="recipe-detail-hero panel-soft">
-              <div className="eyebrow">{meal.is_public ? 'Community recipe' : 'Your recipe'}</div>
-              <h1>{meal.title}</h1>
-              <p>{meal.description || 'A recipe ready for your next week.'}</p>
-              <div className="badges">{(meal.tags || []).map((tag) => <span className="badge" key={tag}>{tag}</span>)}</div>
+        <nav className="recipe-breadcrumb" aria-label="Breadcrumb"><Link href="/discover">Discover</Link><span aria-hidden="true">›</span><span>{meal.title}</span></nav>
+        <article className="recipe-detail-layout">
+          <header className="recipe-detail-hero panel-soft recipe-hero-with-image">
+            <div className="recipe-hero-copy">
+              <div className="eyebrow">Affordable student recipe</div>
+              <h1>{meal.title}</h1><p>{meal.description}</p>
+              <div className="badges">{meal.tags.map((tag) => <span className="badge" key={tag}>{tag}</span>)}</div>
               <div className="recipe-facts">
-                <div><span>Time</span><strong>{meal.prep_time} min</strong></div>
-                <div><span>Servings</span><strong>{meal.servings || 1}</strong></div>
-                <div><span>Estimated cost</span><strong>{money(meal.price)}</strong></div>
-                <div><span>Per serving</span><strong>{money(Number(meal.price || 0) / Math.max(1, Number(meal.servings || 1)))}</strong></div>
+                <div><span>Ready in</span><strong>{meal.prep_time} min</strong></div>
+                <div><span>Serves</span><strong>{meal.servings}</strong></div>
+                <div><span>Estimated total</span><strong>{money(meal.price)}</strong></div>
+                <div><span>Per serving</span><strong>{money(Number(meal.price || 0) / Math.max(1, meal.servings))}</strong></div>
               </div>
-            </header>
-
-            <div className="recipe-detail-content">
-              <section className="panel-soft recipe-section"><h2>Ingredients</h2><div className="recipe-ingredient-list">{(meal.ingredients || []).map((ingredient, index) => <div key={ingredient.id || `${ingredient.name}-${index}`}><strong>{ingredient.name}</strong><span>{ingredient.quantity} {ingredient.unit}</span></div>)}</div></section>
-              <section className="panel-soft recipe-section" id="instructions"><h2>How to make it</h2><p className="recipe-instructions">{meal.instructions || 'The creator has not added instructions yet.'}</p>{meal.video_url ? <a className="soft-btn" href={meal.video_url} target="_blank" rel="noreferrer">Watch recipe video</a> : null}</section>
             </div>
+            <div className="recipe-cover-wrap"><Image className="recipe-cover" src={meal.image} alt={`${meal.title}, an affordable student meal`} width={1200} height={800} priority sizes="(max-width: 900px) 100vw, 46vw" /></div>
+          </header>
 
-            <aside className="recipe-action-card panel-soft">
-              <span>Ready to use this recipe?</span>
-              <Link className="primary-btn" href={`/plan/week?recipe=${encodeURIComponent(meal.id)}`}>Add to week</Link>
-              {user && meal.user_id !== user.id ? <button className="soft-btn" type="button" onClick={saveRecipe}>{saved ? 'Saved to Library' : 'Save to Library'}</button> : null}
-              {!user ? <Link className="soft-btn" href="/login">Log in to save</Link> : null}
-              <Link className="soft-btn" href={`/recipes/${encodeURIComponent(meal.id)}/cook`}>Start cooking</Link>
-              {meal.creator ? <small>Shared by {meal.creator}</small> : null}
-            </aside>
-          </article>
-        ) : null}
+          <div className="recipe-detail-content">
+            <section className="panel-soft recipe-section">
+              <div className="recipe-section-heading"><div><span className="student-kicker">What you need</span><h2>Ingredients</h2></div><span>{meal.servings} {meal.servings === 1 ? 'serving' : 'servings'}</span></div>
+              <div className="recipe-ingredient-list">{meal.ingredients.map((ingredient, index) => <div key={ingredient.id || `${ingredient.name}-${index}`}><strong>{ingredient.name}</strong><span>{ingredient.quantity} {ingredient.unit}</span></div>)}</div>
+            </section>
+            <section className="panel-soft recipe-section" id="instructions">
+              <span className="student-kicker">Simple method</span><h2>How to make it</h2>
+              {steps.length ? <ol className="recipe-step-list">{steps.map((step, index) => <li id={`step-${index + 1}`} key={`${index}-${step}`}><span>{index + 1}</span><p>{step}</p></li>)}</ol> : <p className="recipe-instructions">The creator has not added instructions yet.</p>}
+              {meal.video_url ? <a className="soft-btn" href={meal.video_url} target="_blank" rel="noreferrer">Watch recipe video</a> : null}
+            </section>
+          </div>
+
+          <RecipeActions meal={meal} />
+        </article>
+
+        {related.length ? <section className="related-recipes" aria-labelledby="related-heading"><div><span className="eyebrow">Keep exploring</span><h2 id="related-heading">More {meal.meal_type === 'both' ? 'student meals' : `${meal.meal_type} ideas`}</h2></div><div className="related-recipe-grid">{related.map((item) => <Link href={`/recipes/${item.slug}`} key={item.slug}><Image src={item.image} alt="" width={600} height={400} sizes="(max-width: 760px) 100vw, 33vw"/><strong>{item.title}</strong><span>{item.prep_time} min · {money(item.price / Math.max(1, item.servings))} per serving</span></Link>)}</div></section> : null}
       </main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
     </>
   );
 }

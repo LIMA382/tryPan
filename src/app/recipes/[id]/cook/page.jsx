@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { consumePantryForMeal, loadAllVisibleMeals, saveLeftoversForUser } from '@/lib/dataStore';
+import { recipeSlug } from '@/lib/recipeUtils';
 
 function CookContent({ user }) {
   const { id } = useParams();
@@ -16,7 +17,7 @@ function CookContent({ user }) {
   const [portionsEaten, setPortionsEaten] = useState(1);
   const [leftovers, setLeftovers] = useState(0);
 
-  useEffect(() => { loadAllVisibleMeals(user).then((items) => setMeal(items.find((item) => String(item.id) === decodeURIComponent(String(id))) || null)); }, [id, user]);
+  useEffect(() => { loadAllVisibleMeals(user).then((items) => { const requested = decodeURIComponent(String(id)); setMeal(items.find((item) => String(item.id) === requested || recipeSlug(item.title) === requested) || null); }); }, [id, user]);
   if (!meal) return <AppFrame user={user} title="Cooking mode" subtitle="Loading recipe…"><div className="card">Preparing your recipe…</div></AppFrame>;
 
   async function finish() {

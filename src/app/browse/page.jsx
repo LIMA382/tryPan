@@ -9,6 +9,7 @@ import MealDetailsModal from '@/components/MealDetailsModal';
 import { copyPublicMealForUser, loadPublicMeals } from '@/lib/dataStore';
 import { supabase, hasSupabaseEnv } from '@/lib/supabaseClient';
 import { motionTokens } from '@/lib/motion';
+import { recipePath } from '@/lib/recipeUtils';
 
 const FILTERS = ['All', 'Student picks', '15 minutes', 'Budget', 'Breakfast', 'Soup', 'Meal prep', 'Microwave', 'Vegetarian', 'High protein', 'Dinner', 'Lunch'];
 
@@ -159,8 +160,8 @@ export default function BrowsePage() {
                     meal={meal}
                     publicView
                     compact
-                    onOpen={() => window.location.assign(`/recipes/${meal.id}`)}
-                    actions={<Link className="soft-btn" href={`/recipes/${meal.id}`}>View recipe</Link>}
+                    onOpen={() => window.location.assign(recipePath(meal))}
+                    actions={<Link className="soft-btn" href={recipePath(meal)}>View recipe</Link>}
                   />
                 </motion.div>
               ))}

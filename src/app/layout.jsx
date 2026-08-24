@@ -1,6 +1,7 @@
 import localFont from 'next/font/local';
 import './globals.css';
 import PWARegister from '@/components/PWARegister';
+import { SITE_URL } from '@/lib/site';
 
 const baloo = localFont({
   variable: '--font-brand',
@@ -15,12 +16,12 @@ const baloo = localFont({
 });
 
 export const metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://trypan.app'),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: 'tryPan',
+    default: 'tryPan — pantry-first student meal planner',
     template: '%s · tryPan',
   },
-  description: 'Stop deciding dinner from scratch. Plan from meals you already know, use what you have, and shop only what is missing.',
+  description: 'Plan an affordable student week from food you already have, then shop only for what is missing.',
   manifest: '/manifest.webmanifest',
   applicationName: 'tryPan',
   appleWebApp: {
@@ -32,8 +33,8 @@ export const metadata = {
     telephone: false,
   },
   openGraph: {
-    title: 'tryPan — stop deciding dinner from scratch',
-    description: 'Plan from meals you already know, compare with your pantry, and shop only what is missing.',
+    title: 'tryPan — pantry-first student meal planning',
+    description: 'Plan an affordable week from food you already have, then shop only for what is missing.',
     url: '/',
     siteName: 'tryPan',
     images: [
@@ -48,8 +49,8 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'tryPan — stop deciding dinner from scratch',
-    description: 'Plan from meals you already know, use what you have, and shop only what is missing.',
+    title: 'tryPan — pantry-first student meal planning',
+    description: 'Plan an affordable week from food you already have, then shop only for what is missing.',
     images: ['/og-trypan.png'],
   },
   icons: {
@@ -66,7 +67,6 @@ export const viewport = {
   themeColor: '#963F2E',
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
   viewportFit: 'cover',
 };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, hasSupabaseEnv } from '@/lib/supabaseClient';
 import BrandLogo from '@/components/BrandLogo';
@@ -21,6 +21,16 @@ export default function LoginPage() {
 
   const supabaseReady = hasSupabaseEnv() && supabase;
   const isSignup = mode === 'signup';
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'signup') setMode('signup');
+  }, []);
+
+  function safeReturnTo() {
+    const requested = new URLSearchParams(window.location.search).get('returnTo') || '/app';
+    return requested.startsWith('/') && !requested.startsWith('//') ? requested : '/app';
+  }
 
   async function submit(event) {
     event.preventDefault();
@@ -57,7 +67,7 @@ export default function LoginPage() {
             email: cleanEmail,
             password,
             options: {
-              emailRedirectTo: `${window.location.origin}/planner`,
+              emailRedirectTo: `${window.location.origin}${safeReturnTo()}`,
               data: { display_name: cleanUsername, username: cleanUsername },
             },
           })
@@ -72,7 +82,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/planner');
+      router.push(safeReturnTo());
       router.refresh();
     } finally {
       setBusy(false);
@@ -88,7 +98,7 @@ export default function LoginPage() {
 
     setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/planner` } });
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}${safeReturnTo()}` } });
       if (error) setMessage(error.message);
     } finally {
       setBusy(false);
@@ -100,7 +110,8 @@ export default function LoginPage() {
       <form className="login-card preview-card" onSubmit={submit}>
         <BrandLogo href="/" />
         <div className="eyebrow">{isSignup ? 'Create account' : 'Welcome back'}</div>
-        <h2>{isSignup ? 'Start saving your meals.' : 'Log in to your meal planner.'}</h2>
+        <h1>{isSignup ? 'Build your first affordable week.' : 'Welcome back to your meal planner.'}</h1>
+        {isSignup ? <p className="login-value-copy">Plan around your pantry, estimate the shop and keep leftovers useful. Free to start, with no credit card.</p> : null}
 
         {message && <div className="notice">{message}</div>}
 
@@ -118,6 +129,7 @@ export default function LoginPage() {
         <button className="primary-btn full-width-btn" disabled={busy || !supabaseReady}>{busy ? 'Please wait…' : isSignup ? 'Sign up' : 'Log in'}</button>
         <button type="button" className="soft-btn full-width-btn login-secondary-btn" onClick={google} disabled={busy || !supabaseReady} aria-label="Continue with Google">Continue with Google</button>
         <button type="button" className="nav-link login-switch-btn" onClick={() => { setMessage(''); setMode(isSignup ? 'signin' : 'signup'); }}>{isSignup ? 'Already have an account? Log in' : 'Need an account? Sign up'}</button>
+        <p className="login-legal">By creating an account, you agree to the <a href="/terms">Terms</a> and acknowledge the <a href="/privacy">Privacy notice</a>.</p>
       </form>
     </main>
   );

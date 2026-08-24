@@ -74,7 +74,7 @@ export default function AppNav({ user }) {
         </nav>
       </div>
 
-      <nav className="mobile-bottom-nav" aria-label="Main navigation">
+      {pathname !== '/' ? <nav className={`mobile-bottom-nav ${!user ? 'guest-mobile-bottom-nav' : ''}`} aria-label="Main navigation">
         {(user
           ? [
               ['Home', '/app', 'home'],
@@ -100,7 +100,7 @@ export default function AppNav({ user }) {
             </Link>
           );
         })}
-      </nav>
+      </nav> : null}
     </>
   );
 }
