@@ -33,7 +33,7 @@ export default function AppNav({ user }) {
     <>
       <div className="page-shell nav-shell mobile-app-topbar">
         <nav className="nav nav-clean">
-          <BrandLogo href="/" compact />
+          <BrandLogo href={user ? '/app' : '/'} compact />
           <div className="desktop-nav-links nav-links nav-tabs">
             {links.map(([label, href]) => {
               if (!user && href !== '/discover') return null;
