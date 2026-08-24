@@ -1,12 +1,10 @@
-import { ahProductCatalog } from './ahProductCatalog';
-
 export const REGIONS = [
   { code: 'pt', label: 'Portugal', currency: '€' },
   { code: 'nl', label: 'Netherlands', currency: '€' },
 ];
 
-// Netherlands defaults checked against regular Albert Heijn online prices on 2026-08-23.
-// Values exclude temporary Bonus discounts and are normalized to price_unit.
+// General English ingredient catalogue with editable regional price estimates.
+// Prices are normalized to price_unit and are not tied to a specific brand or package.
 const BASE_INGREDIENTS = [
   ['Rice', 'Pantry', 'g', 'kg', 1.55, 1.19],
   ['Basmati rice', 'Pantry', 'g', 'kg', 2.35, 1.85],
@@ -267,12 +265,6 @@ export const starterIngredients = [
       is_starter: true,
     },
   ])),
-  ...ahProductCatalog.map((item) => ({
-    id: `starter-nl-ah-${slugify(item.name)}`,
-    ...item,
-    region: 'nl',
-    is_starter: true,
-  })),
 ];
 
 export function slugify(value) {
