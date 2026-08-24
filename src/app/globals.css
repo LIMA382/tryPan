@@ -97,7 +97,7 @@ button:disabled { opacity: .58; cursor: not-allowed; }
 .signed-in-pill { border: 1px solid rgba(137,132,51,.22); border-radius: 999px; padding: 10px 13px; background: rgba(255,255,255,.70); color: var(--brand-terracotta); font-weight: 800; font-size: 14px; }
 .nav-action { margin-left: 2px; }
 
-.page-transition { animation: pageIn .38s cubic-bezier(.22,1,.36,1) both; }
+.page-transition { animation: pageIn .22s cubic-bezier(.22,1,.36,1) both; }
 @keyframes pageIn { from { opacity: 0; transform: translateY(12px); filter: blur(4px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
 
 .hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 34px; align-items: center; min-height: calc(100vh - 90px); padding: 34px 0 70px; }
@@ -158,6 +158,7 @@ textarea { min-height: 88px; resize: vertical; }
 
 .meal-card { border-left: 6px solid #c8d5b9; transition: transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s, border-color .22s; }
 .meal-card:hover { transform: translateY(-3px); box-shadow: 0 30px 80px rgba(44,44,38,.12); }
+.meal-card.clickable:active { transform: translateY(-1px) scale(.992); transition-duration: .08s; }
 .meal-card.public { border-left-color: var(--green-2); }
 .meal-card p { margin: 12px 0; }
 .creator-line { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; font-weight: 750; }
@@ -3410,6 +3411,16 @@ textarea:focus-visible,
 .meal-card-image { margin: -20px -20px 17px; overflow: hidden; }
 .meal-card-image img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; transition: transform .25s ease; }
 .meal-card:hover .meal-card-image img { transform: scale(1.025); }
+
+/* Small physical responses make controls feel direct without delaying navigation. */
+.nav-tab, .mobile-tab, .filter-chip, .primary-btn, .soft-btn, .danger-btn { -webkit-tap-highlight-color: transparent; }
+.nav-tab, .mobile-tab { transition: color .18s ease, background-color .18s ease, transform .12s ease; }
+.nav-tab:active, .mobile-tab:active { transform: scale(.96); }
+.meal-modal { will-change: transform, opacity; transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: reduce) {
+  .page-transition { animation: none; }
+  .meal-card, .meal-card-image img, .nav-tab, .mobile-tab { transition: none; }
+}
 .recipe-hero-with-image { display: grid; grid-template-columns: 1.04fr .96fr; gap: 28px; align-items: center; padding: 22px; }
 .recipe-hero-copy { padding: clamp(10px, 3vw, 30px); }
 .recipe-cover-wrap { min-height: 480px; height: 100%; overflow: hidden; border-radius: 25px; }

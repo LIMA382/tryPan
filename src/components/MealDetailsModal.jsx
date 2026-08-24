@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { motionTokens } from '@/lib/motion';
 
 function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
@@ -30,17 +29,17 @@ export default function MealDetailsModal({ meal, onClose, actions, guest = false
   return (
     <AnimatePresence>
       {meal ? (
-        <motion.div className="modal-backdrop" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduceMotion ? undefined : { opacity: 0 }} onMouseDown={onClose}>
+        <motion.div className="modal-backdrop" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduceMotion ? undefined : { opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} onMouseDown={onClose}>
           <motion.article
             className="meal-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="meal-modal-title"
             onMouseDown={(event) => event.stopPropagation()}
-            initial={reduceMotion ? false : { opacity: 0, y: 20, scale: 0.98 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 28, scale: 0.985 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ duration: reduceMotion ? 0 : motionTokens.base, ease: motionTokens.ease }}
+            exit={reduceMotion ? undefined : { opacity: 0, y: 16, scale: 0.99 }}
+            transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 430, damping: 36, mass: 0.82 }}
           >
             <button ref={closeButtonRef} type="button" className="modal-close" onClick={onClose} aria-label="Close meal details">×</button>
 
