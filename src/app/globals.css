@@ -3421,6 +3421,19 @@ textarea:focus-visible,
 .marketing-footer strong { font: 800 25px var(--font-brand); }
 .marketing-footer p { margin: 2px 0 0; }
 .marketing-footer nav { display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-weight: 750; }
+.photo-credits-page { min-height: 100vh; padding: 54px 0 90px; }
+.photo-credits-back { display: inline-flex; margin-bottom: 42px; color: var(--muted); font-weight: 750; }
+.photo-credits-page h1 { max-width: 820px; margin: 10px 0 12px; font: 800 clamp(42px, 7vw, 78px)/.96 var(--font-brand); color: var(--olive); }
+.photo-credits-intro { max-width: 700px; margin: 0 0 34px; color: var(--muted); font-size: 18px; line-height: 1.6; }
+.photo-credits-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.photo-credit-card { overflow: hidden; border: 1px solid var(--line); border-radius: 28px; background: rgba(255, 251, 244, .82); box-shadow: var(--shadow-soft); }
+.photo-credit-card img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; }
+.photo-credit-card > div { padding: 18px 20px 22px; }
+.photo-credit-card h2 { margin: 0 0 8px; font: 800 22px/1.1 var(--font-brand); color: var(--olive); }
+.photo-credit-card p { margin: 5px 0; color: var(--muted); line-height: 1.45; }
+.photo-credit-card a { color: var(--terracotta); font-weight: 750; text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 900px) { .photo-credits-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .photo-credits-grid { grid-template-columns: 1fr; } }
 
 .meal-card-image { margin: -20px -20px 17px; overflow: hidden; }
 .meal-card-image img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; transition: transform .25s ease; }

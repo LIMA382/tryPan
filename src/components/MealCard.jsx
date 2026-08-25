@@ -20,7 +20,7 @@ export default function MealCard({ meal, actions, publicView = false, compact = 
         }
       }}
     >
-      {publicView ? <div className="meal-card-image"><Image src={recipeImageForMeal(meal)} alt="" width={600} height={400} sizes="(max-width: 760px) 100vw, 33vw" /></div> : null}
+      {publicView ? <div className="meal-card-image"><Image src={recipeImageForMeal(meal)} alt={`${meal.title} recipe`} width={600} height={400} sizes="(max-width: 760px) 100vw, 33vw" /></div> : null}
       <div className="card-header">
         <div>
           <h3>{meal.title}</h3>

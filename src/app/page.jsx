@@ -96,7 +96,7 @@ export default function Home() {
         <section className="page-shell marketing-final-cta"><span className="eyebrow">Make next week easier</span><h2>Plan seven days. Buy only what is missing.</h2><p>Start with one meal and let your pantry do more of the work.</p><Link className="primary-btn" href="/login?mode=signup">Start planning free</Link></section>
       </main>
 
-      <footer className="marketing-footer"><div className="page-shell"><div><strong>tryPan</strong><p>Affordable meal planning for ordinary weeks.</p></div><nav aria-label="Footer"><Link href="/discover">Recipes</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/login">Log in</Link></nav></div></footer>
+      <footer className="marketing-footer"><div className="page-shell"><div><strong>tryPan</strong><p>Affordable meal planning for ordinary weeks.</p></div><nav aria-label="Footer"><Link href="/discover">Recipes</Link><Link href="/photo-credits">Photo credits</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/login">Log in</Link></nav></div></footer>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
     </>
   );
