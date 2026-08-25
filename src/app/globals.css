@@ -3391,19 +3391,11 @@ textarea:focus-visible,
 .marketing-steps article { padding: 28px; }
 .marketing-steps b { display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 24px; border-radius: 50%; background: var(--brand-deep-olive); color: white; font: 800 16px var(--font-brand); }
 .marketing-steps h3 { font-size: 24px; }
-.marketing-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding-bottom: clamp(78px, 10vw, 140px); }
-.marketing-feature-card { min-height: 480px; padding: clamp(28px, 5vw, 54px); }
-.marketing-feature-card h2 { max-width: 520px; margin-top: 10px; }
+.marketing-benefits { padding-bottom: clamp(78px, 10vw, 140px); }
+.marketing-feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.marketing-feature-card { min-height: 0; padding: clamp(26px, 3vw, 38px); }
+.marketing-feature-card h3 { max-width: 420px; margin-top: 10px; font-size: clamp(27px, 2.5vw, 36px); line-height: 1.02; }
 .marketing-feature-card > p { max-width: 520px; font-size: 17px; }
-.feature-budget { background: linear-gradient(145deg, rgba(255,251,244,.95), rgba(239,232,216,.82)); }
-.feature-rescue { background: linear-gradient(145deg, rgba(233,240,225,.95), rgba(255,251,244,.86)); }
-.feature-stat { display: grid; gap: 4px; width: min(100%, 330px); margin-top: 60px; padding: 24px; border-radius: 24px; background: var(--brand-deep-olive); color: white; }
-.feature-stat span { opacity: .72; font-size: 12px; font-weight: 800; text-transform: uppercase; }
-.feature-stat strong { font: 800 48px/1 var(--font-brand); }
-.feature-stat em { color: #e6e99a; font-style: normal; font-weight: 800; }
-.feature-rescue ul { display: grid; gap: 8px; margin: 42px 0 0; padding: 0; list-style: none; }
-.feature-rescue li { display: flex; justify-content: space-between; gap: 14px; padding: 15px 16px; border-radius: 16px; background: rgba(255,255,255,.62); }
-.feature-rescue li strong { color: var(--brand-terracotta); }
 .home-recipe-grid, .related-recipe-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
 .home-recipe-grid > a, .related-recipe-grid > a { overflow: hidden; border: 1px solid rgba(255,255,255,.9); border-radius: 26px; background: rgba(255,251,244,.82); box-shadow: var(--shadow-sm); transition: transform .18s ease, box-shadow .18s ease; }
 .home-recipe-grid > a:hover, .related-recipe-grid > a:hover { transform: translateY(-4px); box-shadow: var(--shadow); }

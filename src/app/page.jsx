@@ -12,15 +12,19 @@ export const metadata = {
 };
 
 const money = (value) => `€${Number(value || 0).toFixed(2)}`;
+const faqItems = [
+  { question: 'Is tryPan free?', answer: 'Yes. You can create an account, add your pantry, plan meals and build grocery lists without entering a credit card.' },
+  { question: 'Do I need to track every ingredient perfectly?', answer: 'No. Start with the staples and fresh food that matter this week. You can correct a quantity whenever something changes.' },
+  { question: 'Can I add my own recipes and prices?', answer: 'Yes. Add meals you already cook, edit their ingredients and servings, and adjust ingredient prices for the shops you use.' },
+  { question: 'What happens to my pantry after I cook?', answer: 'Cooking mode can subtract the ingredients you used and save remaining portions as leftovers, so your pantry stays useful for the next plan.' },
+];
 
 export default function Home() {
   const featured = getCuratedRecipes().filter((meal) => ['Fluffy everyday pancakes', 'Red lentil tomato soup', 'One-pot tomato chickpea pasta'].includes(meal.title));
-  const structuredData = {
-    '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'tryPan',
-    applicationCategory: 'LifestyleApplication', operatingSystem: 'Web', url: SITE_URL,
-    description: 'A pantry-first student meal planner for affordable weekly plans and smarter grocery lists.',
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-  };
+  const structuredData = { '@context': 'https://schema.org', '@graph': [
+    { '@type': 'SoftwareApplication', name: 'tryPan', applicationCategory: 'LifestyleApplication', operatingSystem: 'Web', url: SITE_URL, description: 'A pantry-first student meal planner for affordable weekly plans and smarter grocery lists.', offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' } },
+    { '@type': 'FAQPage', mainEntity: faqItems.map((item) => ({ '@type': 'Question', name: item.question, acceptedAnswer: { '@type': 'Answer', text: item.answer } })) },
+  ] };
 
   return (
     <>
@@ -67,15 +71,13 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="page-shell marketing-feature-grid" aria-label="Product benefits">
-          <article className="marketing-feature-card feature-budget">
-            <span className="student-kicker">Budget without spreadsheets</span><h2>See the cost before you commit.</h2><p>Compare total meal cost, price per serving and expected grocery spending before the week begins.</p>
-            <div className="feature-stat"><span>Weekly target</span><strong>€40.00</strong><em>€8.60 left</em></div>
-          </article>
-          <article className="marketing-feature-card feature-rescue">
-            <span className="student-kicker">Waste less</span><h2>Cook the food that needs you first.</h2><p>Expiry reminders, pantry matching and leftover portions help useful food avoid the bin.</p>
-            <ul><li><span>Spinach</span><strong>Use tomorrow</strong></li><li><span>Cooked rice</span><strong>2 portions</strong></li><li><span>Tomato soup</span><strong>Ready to freeze</strong></li></ul>
-          </article>
+        <section className="page-shell marketing-benefits" aria-labelledby="benefits-heading">
+          <div className="marketing-section-heading"><span className="eyebrow">Why tryPan</span><h2 id="benefits-heading">Spend less money and less time deciding.</h2></div>
+          <div className="marketing-feature-grid">
+            <article className="marketing-feature-card"><span className="student-kicker">Spend less on groceries</span><h3>Know the cost before you plan.</h3><p>Compare meal totals and price per serving, then avoid buying ingredients already in your pantry.</p></article>
+            <article className="marketing-feature-card"><span className="student-kicker">Waste less food</span><h3>Use ingredients while they are useful.</h3><p>Prioritize expiring food and keep leftover portions visible for another meal later in the week.</p></article>
+            <article className="marketing-feature-card"><span className="student-kicker">Decide meals faster</span><h3>Stop starting from scratch every evening.</h3><p>Turn familiar recipes and pantry ingredients into a complete Monday-to-Sunday plan.</p></article>
+          </div>
         </section>
 
         <section className="page-shell marketing-section" aria-labelledby="recipes-heading">
@@ -86,12 +88,7 @@ export default function Home() {
 
         <section className="page-shell marketing-faq" aria-labelledby="faq-heading">
           <div><span className="eyebrow">Questions, answered</span><h2 id="faq-heading">A planner that fits real life.</h2></div>
-          <div>
-            <details><summary>Do I need to track every ingredient perfectly?</summary><p>No. Start with the staples and fresh food that affect this week. You can correct quantities with one tap whenever something changes.</p></details>
-            <details><summary>Can I use my own recipes?</summary><p>Yes. Save meals you already cook, edit their ingredients and keep them private, or explore tryPan’s public student recipes.</p></details>
-            <details><summary>Does it work at the supermarket?</summary><p>Yes. tryPan is mobile-friendly, installable from your browser and keeps a useful offline version of key pages and saved data.</p></details>
-            <details><summary>What happens after I cook?</summary><p>Cooking mode can deduct used ingredients and save any remaining portions as leftovers for later in the week.</p></details>
-          </div>
+          <div>{faqItems.map((item) => <details key={item.question}><summary>{item.question}</summary><p>{item.answer}</p></details>)}</div>
         </section>
 
         <section className="page-shell marketing-final-cta"><span className="eyebrow">Make next week easier</span><h2>Plan seven days. Buy only what is missing.</h2><p>Start with one meal and let your pantry do more of the work.</p><Link className="primary-btn" href="/login?mode=signup">Start planning free</Link></section>
