@@ -3344,8 +3344,8 @@ textarea:focus-visible,
 
 /* Marketing, recipe SEO and readability pass */
 .marketing-home { overflow: hidden; }
-.marketing-hero { min-height: calc(100vh - 90px); display: grid; grid-template-columns: 1fr .95fr; gap: clamp(34px, 6vw, 82px); align-items: center; padding-block: clamp(56px, 8vw, 108px); }
-.marketing-hero-copy h1 { max-width: 720px; font-size: clamp(60px, 7.4vw, 112px); }
+.marketing-hero { min-height: calc(100vh - 90px); display: grid; grid-template-columns: 1fr .95fr; gap: clamp(34px, 6vw, 82px); align-items: center; padding-block: clamp(40px, 5vw, 72px); }
+.marketing-hero-copy h1 { max-width: 720px; font-size: clamp(56px, 5.2vw, 72px); }
 .marketing-hero-copy > p { max-width: 650px; margin: 24px 0 0; font-size: clamp(17px, 1.6vw, 21px); }
 .hero-trust-row { display: flex; flex-wrap: wrap; gap: 9px 18px; margin-top: 18px; color: var(--muted); font-size: 13px; font-weight: 750; }
 .hero-trust-row span::before { content: '✓'; margin-right: 6px; color: var(--brand-olive); font-weight: 950; }

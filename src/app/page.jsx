@@ -29,14 +29,14 @@ export default function Home() {
       <main className="marketing-home">
         <section className="page-shell marketing-hero">
           <div className="marketing-hero-copy">
-            <div className="eyebrow">The pantry-first planner for student life</div>
-            <h1>Plan a cheaper week from food you already have.</h1>
-            <p>tryPan turns your pantry, budget and favourite meals into a realistic weekly plan—then builds a grocery list containing only what you are missing.</p>
+            <div className="eyebrow">Pantry-first planning for students</div>
+            <h1>The student meal planner that starts with what you already have.</h1>
+            <p>Build an affordable weekly plan, use food before it expires, and generate a grocery list containing only what you’re missing.</p>
             <div className="hero-actions">
-              <Link className="primary-btn" href="/login?mode=signup">Build my free week</Link>
-              <Link className="soft-btn" href="/discover">Explore affordable recipes</Link>
+              <Link className="primary-btn" href="/login?mode=signup">Start planning free</Link>
+              <Link className="soft-btn" href="/discover">Explore recipes</Link>
             </div>
-            <div className="hero-trust-row"><span>Free to start</span><span>No credit card</span><span>Works on mobile</span></div>
+            <div className="hero-trust-row"><span>No credit card</span><span>Takes about 2 minutes</span><span>Works on mobile</span></div>
           </div>
 
           <div className="marketing-product-preview">
@@ -77,7 +77,7 @@ export default function Home() {
         <section className="page-shell marketing-section" aria-labelledby="recipes-heading">
           <div className="marketing-section-heading"><span className="eyebrow">Cook something achievable</span><h2 id="recipes-heading">Affordable recipes for actual student weeks.</h2><p>Short ingredient lists, ordinary equipment and clear costs per serving.</p></div>
           <div className="home-recipe-grid">{featured.map((meal) => <Link href={`/recipes/${meal.slug}`} key={meal.slug}><Image src={meal.image} alt="" width={600} height={400} sizes="(max-width: 760px) 100vw, 33vw"/><div><span>{meal.prep_time} min</span><span>{money(meal.price / Math.max(1, meal.servings))} per serving</span></div><h3>{meal.title}</h3><p>{meal.description}</p></Link>)}</div>
-          <Link className="soft-btn marketing-centered-link" href="/discover">Browse all student recipes</Link>
+          <Link className="soft-btn marketing-centered-link" href="/discover">Explore recipes</Link>
         </section>
 
         <section className="page-shell marketing-faq" aria-labelledby="faq-heading">
@@ -90,7 +90,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="page-shell marketing-final-cta"><span className="eyebrow">Make next week easier</span><h2>Plan seven days. Buy only what is missing.</h2><p>Start with one meal and let your pantry do more of the work.</p><Link className="primary-btn" href="/login?mode=signup">Create my free account</Link></section>
+        <section className="page-shell marketing-final-cta"><span className="eyebrow">Make next week easier</span><h2>Plan seven days. Buy only what is missing.</h2><p>Start with one meal and let your pantry do more of the work.</p><Link className="primary-btn" href="/login?mode=signup">Start planning free</Link></section>
       </main>
 
       <footer className="marketing-footer"><div className="page-shell"><div><strong>tryPan</strong><p>Affordable meal planning for ordinary weeks.</p></div><nav aria-label="Footer"><Link href="/discover">Recipes</Link><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/login">Log in</Link></nav></div></footer>
