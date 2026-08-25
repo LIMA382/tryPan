@@ -3404,6 +3404,9 @@ textarea:focus-visible,
 .home-recipe-grid h3 { padding: 10px 18px 0; font-size: 25px; }
 .home-recipe-grid p { margin: 8px 18px 22px; }
 .marketing-centered-link { width: fit-content; margin: 28px auto 0; }
+.home-recipe-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; margin: 24px auto 0; }
+.home-recipe-links a { color: var(--brand-terracotta); font-size: 13px; font-weight: 800; text-decoration: underline; text-decoration-color: rgba(150,63,46,.28); text-underline-offset: 4px; }
+.home-recipe-links a:hover { text-decoration-color: currentColor; }
 .marketing-faq { display: grid; grid-template-columns: .7fr 1.3fr; gap: clamp(34px, 8vw, 100px); padding-block: clamp(70px, 9vw, 120px); }
 .marketing-faq details { border-top: 1px solid var(--line); padding: 20px 0; }
 .marketing-faq details:last-child { border-bottom: 1px solid var(--line); }

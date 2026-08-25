@@ -6,8 +6,8 @@ import { getCuratedRecipes } from '@/lib/recipeCatalog';
 import { SITE_URL } from '@/lib/site';
 
 export const metadata = {
-  title: 'Student meal planner for cheaper, pantry-first weeks',
-  description: 'Turn the food you already have into an affordable weekly meal plan and a grocery list containing only what is missing.',
+  title: 'Student Meal Planner with Pantry and Grocery Lists',
+  description: 'Plan affordable student meals from ingredients you already have. Create weekly meal plans, reduce food waste and generate an automatic grocery list.',
   alternates: { canonical: '/' },
 };
 
@@ -23,6 +23,7 @@ export default function Home() {
   const featured = getCuratedRecipes().filter((meal) => ['Fluffy everyday pancakes', 'Red lentil tomato soup', 'One-pot tomato chickpea pasta'].includes(meal.title));
   const structuredData = { '@context': 'https://schema.org', '@graph': [
     { '@type': 'SoftwareApplication', name: 'tryPan', applicationCategory: 'LifestyleApplication', operatingSystem: 'Web', url: SITE_URL, description: 'A pantry-first student meal planner for affordable weekly plans and smarter grocery lists.', offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' } },
+    { '@type': 'WebSite', name: 'tryPan', url: SITE_URL, description: 'Affordable student meal planning with pantry matching and automatic grocery lists.' },
     { '@type': 'FAQPage', mainEntity: faqItems.map((item) => ({ '@type': 'Question', name: item.question, acceptedAnswer: { '@type': 'Answer', text: item.answer } })) },
   ] };
 
@@ -84,6 +85,7 @@ export default function Home() {
           <div className="marketing-section-heading"><span className="eyebrow">Cook something achievable</span><h2 id="recipes-heading">Affordable recipes for actual student weeks.</h2><p>Short ingredient lists, ordinary equipment and clear costs per serving.</p></div>
           <div className="home-recipe-grid">{featured.map((meal) => <Link href={`/recipes/${meal.slug}`} key={meal.slug}><Image src={meal.image} alt="" width={600} height={400} sizes="(max-width: 760px) 100vw, 33vw"/><div><span>{meal.prep_time} min</span><span>{money(meal.price / Math.max(1, meal.servings))} per serving</span></div><h3>{meal.title}</h3><p>{meal.description}</p></Link>)}</div>
           <Link className="soft-btn marketing-centered-link" href="/discover">Explore recipes</Link>
+          <nav className="home-recipe-links" aria-label="Browse recipe categories"><Link href="/discover?filter=Budget">Cheap student recipes</Link><Link href="/discover?filter=Breakfast">Simple breakfasts</Link><Link href="/discover?filter=Soup">Easy soups</Link><Link href="/discover?filter=15%20minutes">15-minute meals</Link><Link href="/discover?filter=Meal%20prep">Meal-prep recipes</Link></nav>
         </section>
 
         <section className="page-shell marketing-faq" aria-labelledby="faq-heading">

@@ -70,6 +70,11 @@ export default function BrowsePage() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const requestedFilter = new URLSearchParams(window.location.search).get('filter');
+    if (requestedFilter && FILTERS.includes(requestedFilter)) setFilter(requestedFilter);
+  }, []);
+
   const visibleMeals = useMemo(() => {
     const needle = filter.toLowerCase();
     const query = search.trim().toLowerCase();
