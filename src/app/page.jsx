@@ -39,19 +39,23 @@ export default function Home() {
             <div className="hero-trust-row"><span>No credit card</span><span>Takes about 2 minutes</span><span>Works on mobile</span></div>
           </div>
 
-          <div className="marketing-product-preview">
-            <Image src="/images/recipes/student-rice-bowl.jpg" alt="An affordable rice bowl planned with tryPan" width={1200} height={800} priority sizes="(max-width: 900px) 100vw, 48vw" />
-            <div className="preview-budget-chip"><span>Estimated week</span><strong>€31.40</strong></div>
-            <div className="preview-pantry-list">
-              <span className="student-kicker">Pantry check</span>
-              <strong>8 ingredients already at home</strong>
-              <small>Only 6 items added to your grocery list</small>
+          <div className="marketing-product-preview" aria-label="Example tryPan weekly planner">
+            <div className="product-demo-topbar"><div><i /><i /><i /></div><span>Week of 25 August</span><strong>€31.40 planned</strong></div>
+            <div className="product-demo-body">
+              <div className="product-demo-heading"><div><span className="student-kicker">Your week</span><h2>Monday’s plan</h2></div><span className="demo-ready-pill">Pantry checked</span></div>
+              <div className="product-demo-days" aria-hidden="true"><span className="active">M<b>25</b></span><span>T<b>26</b></span><span>W<b>27</b></span><span>T<b>28</b></span><span>F<b>29</b></span><span>S<b>30</b></span><span>S<b>31</b></span></div>
+              <div className="product-demo-meal">
+                <div><span>Dinner · 25 min</span><h3>One-pot tomato chickpea pasta</h3><p>€1.37 per serving · 4 servings</p></div>
+                <div className="demo-pantry-score"><strong>4/6</strong><span>ingredients at home</span></div>
+              </div>
+              <div className="product-demo-list"><div><span>Already in your pantry</span><strong>Chickpeas, pasta, garlic, olive oil</strong></div><div><span>Add to grocery list</span><strong>Tomatoes and spinach</strong></div></div>
+              <div className="product-demo-footer"><span>Grocery list updated automatically</span><strong>2 items to buy</strong></div>
             </div>
           </div>
         </section>
 
-        <section className="marketing-proof-strip" aria-label="tryPan catalogue facts">
-          <div className="page-shell"><p><strong>100+</strong><span>simple student recipes</span></p><p><strong>220</strong><span>general English ingredients</span></p><p><strong>7 days</strong><span>planned Monday to Sunday</span></p><p><strong>1 list</strong><span>checked against your pantry</span></p></div>
+        <section className="marketing-proof-strip" aria-label="tryPan capabilities">
+          <div className="page-shell"><p><strong>100+</strong><span>affordable student recipes</span></p><p><strong>Automatic</strong><span>pantry matching</span></p><p><strong>Clear costs</strong><span>per meal and serving</span></p><p><strong>Waste less</strong><span>expiry and leftover tracking</span></p></div>
         </section>
 
         <section className="page-shell marketing-section" aria-labelledby="how-heading">
