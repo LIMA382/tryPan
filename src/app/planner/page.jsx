@@ -6,7 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { DAYS, SLOTS, addDays, addWeeks, formatWeekRange, getMonday } from '@/lib/date';
-import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
+import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
+import { buildSmartWeekPlan } from '@/lib/mealRecommendations.mjs';
 import { loadStudentSettings } from '@/lib/studentStore';
 
 function price(value) {
@@ -29,6 +30,7 @@ function PlannerContent({ user }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [autoPlanning, setAutoPlanning] = useState(false);
+  const [planPreview, setPlanPreview] = useState(null);
 
   const load = useCallback(async function load() {
     setLoading(true);
@@ -148,32 +150,17 @@ function PlannerContent({ user }) {
   }
 
   async function autoPlanWeek() {
-    setAutoPlanning(true);
     setError('');
-    try {
-      const settings = loadStudentSettings();
-      const ranked = suggestMealsFromPantry(meals, pantryItems);
-      const used = new Map();
-      let next = plan;
-      for (const day of DAYS) {
-        for (const slot of SLOTS) {
-          const key = `${day}-${slot}`;
-          if (next.slots[key]) continue;
-          const kind = slot.toLowerCase();
-          const timeLimit = settings.examMode ? Math.min(15, settings.maxPrepTime) : settings.maxPrepTime;
-          const meal = ranked.find((candidate) => (candidate.meal_type === kind || candidate.meal_type === 'both') && Number(candidate.prep_time || 0) <= timeLimit && (used.get(candidate.id) || 0) < 2)
-            || ranked.find((candidate) => (candidate.meal_type === kind || candidate.meal_type === 'both') && (used.get(candidate.id) || 0) < 2);
-          if (!meal) continue;
-          next = await setPlannedMealForUser(user, next, day, slot, meal.id);
-          used.set(meal.id, (used.get(meal.id) || 0) + 1);
-        }
-      }
-      setPlan(next);
-    } catch (err) {
-      setError(err.message || 'Could not automatically plan this week.');
-    } finally {
-      setAutoPlanning(false);
-    }
+    const preview = buildSmartWeekPlan(meals, pantryItems, plan, loadStudentSettings());
+    if (!preview.additions.length) return setError('Every available slot is already planned.');
+    setPlanPreview(preview);
+  }
+
+  async function applySmartPlan() {
+    setAutoPlanning(true); setError('');
+    try { await saveSmartPlanForUser(user, plan, planPreview.additions); setPlan({ ...planPreview, additions: undefined }); setPlanPreview(null); }
+    catch (err) { setError(err.message || 'Could not save the smart plan.'); }
+    finally { setAutoPlanning(false); }
   }
 
   return (
@@ -191,8 +178,10 @@ function PlannerContent({ user }) {
         </div>
         <button type="button" className="soft-btn" onClick={goToThisWeek}>This week</button>
         <button type="button" className="soft-btn" onClick={() => moveWeek(1)}>Next week →</button>
-        <button type="button" className="primary-btn" onClick={autoPlanWeek} disabled={autoPlanning || loading}>{autoPlanning ? 'Planning…' : 'Auto-plan empty slots'}</button>
+        <button type="button" className="primary-btn" onClick={autoPlanWeek} disabled={autoPlanning || loading}>{autoPlanning ? 'Saving…' : 'Build smart plan'}</button>
       </div>
+
+      {planPreview ? <section className="smart-plan-preview panel-soft"><div><span className="student-kicker">Preview first</span><h3>{planPreview.additions.length} meals ready to add</h3><p>Prioritized pantry coverage, expiring food, your cooking-time limit and variety. Nothing has been saved yet.</p></div><div className="smart-plan-preview-list">{planPreview.additions.slice(0, 6).map((item) => <span key={`${item.day}-${item.slot}`}><strong>{item.day.slice(0, 3)} {item.slot}</strong>{byId.get(item.mealId)?.title}</span>)}{planPreview.additions.length > 6 ? <em>+{planPreview.additions.length - 6} more</em> : null}</div><div className="cook-complete-actions"><button type="button" className="primary-btn" onClick={applySmartPlan} disabled={autoPlanning}>{autoPlanning ? 'Saving plan…' : 'Add to my week'}</button><button type="button" className="soft-btn" onClick={() => setPlanPreview(null)} disabled={autoPlanning}>Cancel</button></div></section> : null}
 
       {error && <div className="notice error-notice">{error}</div>}
       {loading || !plan ? <div className="card">Loading planner…</div> : null}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
-import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPantryTripsForUser, loadPlanForUser, suggestMealsFromPantry } from '@/lib/dataStore';
+import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPantryTripsForUser, loadPlanForUser, rankMeals, suggestMealsFromPantry } from '@/lib/dataStore';
 import { DAYS } from '@/lib/date';
 import { defaultStudentSettings, loadStudentProgress, loadStudentSettings, saveStudentSettings, toggleStudentChallenge } from '@/lib/studentStore';
 
@@ -73,16 +73,11 @@ function StudentContent({ user }) {
   }
 
   function localMealIdeas() {
-    const pantryNames = new Set(data.pantry.map((item) => String(item.name).trim().toLowerCase()));
     const limit = settings.examMode ? Math.min(15, settings.maxPrepTime) : settings.maxPrepTime;
-    return [...data.meals].map((meal) => {
-      const ingredients = meal.ingredients || [];
-      const ready = ingredients.filter((item) => pantryNames.has(String(item.name).trim().toLowerCase()));
-      const missing = ingredients.filter((item) => !pantryNames.has(String(item.name).trim().toLowerCase())).map((item) => item.name).slice(0, 4);
-      const coverage = ingredients.length ? Math.round((ready.length / ingredients.length) * 100) : 0;
-      const score = coverage * 3 - Math.max(0, Number(meal.prep_time || 0) - limit) - Number(meal.price || 0);
-      return { mealId: meal.id, title: meal.title, prepTime: Number(meal.prep_time || 0), pantryMatch: `${coverage}% of the ingredients are already in your pantry`, missing, reason: coverage >= 60 ? 'Uses plenty of what you already have.' : 'A practical, quick student meal.', score };
-    }).sort((a, b) => b.score - a.score).slice(0, 3);
+    return rankMeals(data.meals, data.pantry, { maxPrepTime: limit }).slice(0, 3).map((meal) => {
+      const missing = (meal.ingredients || []).filter((item) => !data.pantry.some((stock) => String(stock.canonical_name || stock.name).toLowerCase() === String(item.canonical_name || item.name).toLowerCase())).map((item) => item.name).slice(0, 4);
+      return { mealId: meal.id, title: meal.title, prepTime: Number(meal.prep_time || 0), pantryMatch: `${meal.pantry_coverage}% pantry coverage`, missing, reason: meal.expiring_matches ? `Uses ${meal.expiring_matches} ingredient${meal.expiring_matches === 1 ? '' : 's'} before expiry.` : meal.pantry_coverage >= 60 ? 'Uses plenty of what you already have.' : 'Fits your time and budget preferences.' };
+    });
   }
 
   async function askWhatToEat() {
@@ -96,7 +91,7 @@ function StudentContent({ user }) {
         body: JSON.stringify({
           pantry: data.pantry.slice(0, 80).map(({ name, quantity, unit, expiry_date }) => ({ name, quantity, unit, expiry_date })),
           preferences: { maxPrepTime: settings.maxPrepTime, weeklyBudget: settings.weeklyBudget, examMode: settings.examMode, servings: settings.householdSize },
-          candidates: data.meals.slice(0, 60).map(({ id, title, prep_time, price, tags, ingredients }) => ({ id, title, prepTime: prep_time, price, tags, ingredients: (ingredients || []).map((item) => item.name) })),
+          candidates: rankMeals(data.meals, data.pantry, { maxPrepTime: settings.maxPrepTime }).slice(0, 60).map(({ id, title, prep_time, price, tags, ingredients, pantry_coverage, expiring_matches }) => ({ id, title, prepTime: prep_time, price, tags, pantryCoverage: pantry_coverage, expiringMatches: expiring_matches, ingredients: (ingredients || []).map((item) => item.name) })),
         }),
       });
       const result = await response.json();
@@ -151,7 +146,7 @@ function StudentContent({ user }) {
             <section className="panel-soft student-card">
               <div className="card-header"><div><span className="student-kicker">Pantry rescue</span><h3>Cook before buying more</h3></div><Link href="/plan/pantry">View pantry</Link></div>
               <div className="student-meal-list">
-                {summary.rescueMeals.map((meal) => <Link href={`/recipes/${meal.id}`} key={meal.id}><div><strong>{meal.title}</strong><span>{meal.pantry_matches} ingredients ready</span></div><em>{meal.pantry_coverage}%</em></Link>)}
+                {summary.rescueMeals.map((meal) => <Link href={`/recipes/${meal.id}`} key={meal.id}><div><strong>{meal.title}</strong><span>{meal.pantry_matched} ingredients ready{meal.expiring_matches ? ` · uses ${meal.expiring_matches} soon` : ''}</span></div><em>{meal.pantry_coverage}%</em></Link>)}
                 {!summary.rescueMeals.length && <p>Add pantry items to unlock matching meals.</p>}
               </div>
             </section>

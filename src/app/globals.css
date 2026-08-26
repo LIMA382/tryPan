@@ -3526,3 +3526,9 @@ textarea:focus-visible,
 .cook-review-line.short > span { color: #a75a2e; }
 .cook-review-line.not-tracked > span { color: #817d70; }
 .cook-complete-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1rem; }
+.smart-plan-preview { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(280px, 1.4fr) auto; gap: 1.25rem; align-items: center; margin: 1rem 0; padding: 1.2rem; }
+.smart-plan-preview h3, .smart-plan-preview p { margin: .2rem 0; }
+.smart-plan-preview-list { display: flex; flex-wrap: wrap; gap: .4rem; }
+.smart-plan-preview-list span { display: grid; padding: .45rem .65rem; border-radius: .75rem; background: rgba(79,76,22,.07); font-size: .75rem; }
+.smart-plan-preview-list strong { color: #a54832; font-size: .66rem; text-transform: uppercase; }
+@media (max-width: 900px) { .smart-plan-preview { grid-template-columns: 1fr; } }

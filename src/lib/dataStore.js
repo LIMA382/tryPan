@@ -18,8 +18,9 @@ import { getMonday } from './date';
 import { canonicalIngredientName, ingredientAliasesForName, ingredientIdentityKey, ingredientMatchesQuery, ingredientMatchRank, ingredientNamesMatch, normalizedAliases } from './ingredientIdentity.mjs';
 import { compatibleUnitKey, fromBaseQuantity, normalizeUnit, toBaseQuantity, unitInfo } from './unitConversion.mjs';
 import { buildPantryConsumptionPreview } from './pantryConsumption.mjs';
+import { rankMeals } from './mealRecommendations.mjs';
 
-export { buildPantryConsumptionPreview };
+export { buildPantryConsumptionPreview, rankMeals };
 
 export { buildGroceryList };
 
@@ -816,20 +817,24 @@ export function buildPantryRecap(trips = [], pantryItems = [], meals = [], plan 
 }
 
 export function suggestMealsFromPantry(meals = [], pantryItems = []) {
-  const pantryByName = new Map(
-    (pantryItems || []).map((item) => [String(item.name || '').trim().toLowerCase(), item])
-  );
-
-  return (meals || [])
-    .map((meal) => {
-      const ingredients = meal.ingredients || [];
-      const matched = ingredients.filter((ingredient) => pantryByName.has(String(ingredient.name || '').trim().toLowerCase())).length;
-      const coverage = ingredients.length ? Math.round((matched / ingredients.length) * 100) : 0;
-      return { ...meal, pantry_coverage: coverage, pantry_matched: matched, pantry_total: ingredients.length };
-    })
-    .filter((meal) => meal.pantry_coverage > 0)
-    .sort((a, b) => b.pantry_coverage - a.pantry_coverage || Number(a.price || 0) - Number(b.price || 0))
+  return rankMeals(meals, pantryItems)
+    .filter((meal) => meal.pantry_coverage > 0 || meal.expiring_matches > 0)
     .slice(0, 6);
+}
+
+export async function saveSmartPlanForUser(user, plan, additions = []) {
+  if (!additions.length) return plan;
+  if (isDemo()) {
+    let next = plan;
+    for (const item of additions) next = localSetPlannedMeal(item.day, item.slot, item.mealId, item.servings);
+    return next;
+  }
+  clearCachedPrefix(`plan:${user.id}:`);
+  const planId = plan?.id || (await getOrCreateWeekPlan(user, plan?.week_start_date || getMonday())).id;
+  await throwIfError(await supabase.from('planned_meals').upsert(additions.map((item) => ({
+    weekly_plan_id: planId, meal_id: item.mealId, day_of_week: item.day, slot: item.slot, servings: item.servings,
+  })), { onConflict: 'weekly_plan_id,day_of_week,slot' }));
+  return { ...plan, id: planId };
 }
 
 function normalizePantryItem(row) {
