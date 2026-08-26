@@ -15,6 +15,7 @@ import {
   emptyPlan,
 } from './localStore';
 import { getMonday } from './date';
+import { canonicalIngredientName, ingredientIdentityKey, ingredientMatchesQuery, ingredientNamesMatch, normalizedAliases } from './ingredientIdentity';
 
 export { buildGroceryList };
 
@@ -40,8 +41,10 @@ function loadPersonalCatalog() {
 function savePersonalCatalog(item) {
   if (typeof window === 'undefined') return item;
   const current = loadPersonalCatalog();
-  const key = `${item.region}:${String(item.name || '').trim().toLowerCase()}`;
-  const next = [item, ...current.filter((entry) => entry.id !== item.id && `${entry.region}:${String(entry.name || '').trim().toLowerCase()}` !== key)];
+  const next = [item, ...current.filter((entry) => entry.id !== item.id && (
+    normalizeRegion(entry.region) !== normalizeRegion(item.region)
+    || !ingredientNamesMatch(entry.name, item.name, entry.aliases, item.aliases)
+  ))];
   window.localStorage.setItem(PERSONAL_CATALOG_KEY, JSON.stringify(next.slice(0, 250)));
   return item;
 }
@@ -120,12 +123,6 @@ export function calculateMealPrice(ingredients = []) {
   );
 }
 
-function itemIdentity(item) {
-  const id = item.ingredient_id && !String(item.ingredient_id).startsWith('starter-') ? `id:${item.ingredient_id}` : '';
-  if (id) return id;
-  return `name:${String(item.name || '').trim().toLowerCase()}`;
-}
-
 function compatibleUnitKey(unit) {
   const info = unitInfo(unit);
   return `${info.group}:${info.base}`;
@@ -140,7 +137,7 @@ function buildNeededItems(meals, plan) {
     if (!meal) return;
 
     (meal.ingredients || []).forEach((ing) => {
-      const identity = itemIdentity(ing);
+      const identity = ingredientIdentityKey(ing);
       const unitKey = compatibleUnitKey(ing.unit);
       const key = `${identity}|${unitKey}|${ing.category || 'Other'}|${ing.unit || ''}`;
       const prev = totals.get(key) || {
@@ -174,7 +171,7 @@ export function buildPantryAwareGroceryList(meals, plan, pantryItems = []) {
   const pantryByKey = new Map();
 
   for (const item of pantryItems || []) {
-    const identity = itemIdentity(item);
+    const identity = ingredientIdentityKey(item);
     const unitKey = compatibleUnitKey(item.unit);
     const key = `${identity}|${unitKey}`;
     const current = pantryByKey.get(key) || { quantityBase: 0, items: [], displayUnit: item.unit || '' };
@@ -184,7 +181,7 @@ export function buildPantryAwareGroceryList(meals, plan, pantryItems = []) {
   }
 
   return needed.map((item) => {
-    const identity = itemIdentity(item);
+    const identity = ingredientIdentityKey(item);
     const unitKey = compatibleUnitKey(item.unit);
     const pantry = pantryByKey.get(`${identity}|${unitKey}`);
     const needBase = item.quantityBase ?? toBaseQuantity(item.quantity, item.unit);
@@ -247,13 +244,15 @@ function cleanTags(tags) {
 function normalizeIngredient(row) {
   const catalog = row.ingredient_catalog || row.catalog || null;
   const name = row.name || catalog?.name || '';
-  const starter = starterIngredients.find((item) => item.name.toLowerCase() === String(name).toLowerCase());
+  const starter = starterIngredients.find((item) => ingredientNamesMatch(item.name, name, item.aliases));
 
   return {
     id: row.id,
     meal_id: row.meal_id,
     ingredient_id: row.ingredient_id || null,
     name,
+    canonical_name: catalog?.name || name,
+    aliases: normalizedAliases(catalog?.aliases),
     quantity: Number(row.quantity || 0),
     unit: row.unit || catalog?.default_unit || starter?.default_unit || '',
     category: row.category || catalog?.category || starter?.category || 'Other',
@@ -319,6 +318,7 @@ function normalizeCatalogIngredient(row) {
     price_unit: row.price_unit || row.default_unit || '',
     created_by: row.created_by || null,
     is_user_created: Boolean(row.is_user_created),
+    aliases: normalizedAliases(row.aliases),
     created_at: row.created_at || null,
   };
 }
@@ -336,11 +336,11 @@ function starterForRegion(region = 'pt') {
 function mergeCatalogRows(region, rows = []) {
   const map = new Map();
   for (const item of starterForRegion(region)) {
-    map.set(item.name.toLowerCase(), item);
+    map.set(canonicalIngredientName(item.name), item);
   }
   for (const row of rows || []) {
     const item = normalizeCatalogIngredient(row);
-    const key = item.name.toLowerCase();
+    const key = canonicalIngredientName(item.name);
     const current = map.get(key);
     // Built-in regional prices are the maintained supermarket baseline. A user's
     // own saved price still wins, while old database seed rows cannot make it stale.
@@ -461,7 +461,7 @@ export async function loadIngredientCatalog(region = 'pt', query = '') {
   if (!needle) return catalog.slice(0, 80);
 
   return catalog
-    .filter((item) => `${item.name} ${item.category}`.toLowerCase().includes(needle))
+    .filter((item) => ingredientMatchesQuery(item, needle))
     .slice(0, 30);
 }
 
@@ -475,13 +475,21 @@ export async function createCatalogIngredient(user, ingredient) {
     price_unit: ingredient.price_unit || ingredient.default_unit || ingredient.unit || '',
     created_by: user?.id || null,
     is_user_created: true,
+    aliases: normalizedAliases(ingredient.aliases),
   };
 
   if (!payload.name) throw new Error('Ingredient name is required.');
 
   if (!hasSupabaseEnv() || !supabase) {
-    return savePersonalCatalog(normalizeCatalogIngredient({ ...payload, id: `local-${payload.region}-${slugify(payload.name)}` }));
+    const existing = mergeCatalogRows(payload.region, loadPersonalCatalog())
+      .find((item) => ingredientNamesMatch(item.name, payload.name, item.aliases, payload.aliases));
+    return existing || savePersonalCatalog(normalizeCatalogIngredient({ ...payload, id: `local-${payload.region}-${slugify(payload.name)}` }));
   }
+
+  const { data: existingRows } = await supabase.from('ingredient_catalog').select('*').eq('region', payload.region).limit(2000);
+  const existing = (existingRows || []).map(normalizeCatalogIngredient)
+    .find((item) => ingredientNamesMatch(item.name, payload.name, item.aliases, payload.aliases));
+  if (existing) return savePersonalCatalog(existing);
 
   const { data, error } = await supabase
     .from('ingredient_catalog')
@@ -505,6 +513,7 @@ export async function updateCatalogIngredient(user, ingredient) {
     price_unit: ingredient.price_unit || ingredient.default_unit || ingredient.unit || '',
     created_by: ingredient.created_by || user?.id || null,
     is_user_created: true,
+    aliases: normalizedAliases(ingredient.aliases),
     created_at: ingredient.created_at || new Date().toISOString(),
   };
 
@@ -523,6 +532,7 @@ export async function updateCatalogIngredient(user, ingredient) {
       default_unit: payload.default_unit,
       estimated_price: payload.estimated_price,
       price_unit: payload.price_unit,
+      aliases: payload.aliases,
     })
     .eq('id', ingredient.id)
     .eq('created_by', user.id)
@@ -850,11 +860,14 @@ export function suggestMealsFromPantry(meals = [], pantryItems = []) {
 }
 
 function normalizePantryItem(row) {
+  const catalog = row.ingredient_catalog || null;
   return {
     id: row.id,
     user_id: row.user_id,
     ingredient_id: row.ingredient_id || null,
     name: row.name || '',
+    canonical_name: catalog?.name || row.name || '',
+    aliases: normalizedAliases(catalog?.aliases),
     quantity: Number(row.quantity || 0),
     unit: row.unit || '',
     category: row.category || 'Other',
@@ -911,7 +924,7 @@ export async function loadPantryItemsForUser(user) {
   if (!hasSupabaseEnv() || !supabase) return [];
 
   return cachedData(`pantry:items:${user.id}`, async () => {
-    const { data, error } = await supabase.from('pantry_items').select('*').eq('user_id', user.id).order('category', { ascending: true }).order('name', { ascending: true });
+    const { data, error } = await supabase.from('pantry_items').select('*, ingredient_catalog(*)').eq('user_id', user.id).order('category', { ascending: true }).order('name', { ascending: true });
     if (error) throw error;
     return (data || []).map(normalizePantryItem);
   });

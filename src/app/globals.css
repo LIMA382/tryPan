@@ -3152,6 +3152,7 @@ textarea:focus-visible,
 .supermarket-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--brand-cream); color: var(--brand-terracotta); font-weight: 950; }
 .lesson-item-adder { margin: 0; }
 .ingredient-create-notice { display: block; margin-top: 7px; color: var(--brand-deep-olive); font-size: 12px; font-weight: 800; }
+.ingredient-match-notice { padding: 10px 12px; color: var(--brand-deep-olive); background: rgba(212, 225, 199, .48); border-radius: 12px; font-size: 12px; line-height: 1.45; }
 .lesson-add-button { grid-area: add; min-height: 48px; border: 0; border-radius: 16px; background: var(--brand-blue); color: white; font-weight: 950; }
 .lesson-basket { padding: 16px; border-radius: 22px; background: rgba(229,222,202,.34); }
 .lesson-basket h4 { margin: 0; font-size: 18px; }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createCatalogIngredient, loadIngredientCatalog, updateCatalogIngredient } from '@/lib/dataStore';
+import { ingredientNamesMatch } from '@/lib/ingredientIdentity';
 
 const CATEGORIES = ['Produce', 'Protein', 'Dairy', 'Pantry', 'Frozen', 'Spices', 'Bakery', 'Other'];
 
@@ -21,6 +22,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
   const [newCategory, setNewCategory] = useState(ingredient?.category || 'Other');
   const [newDefaultUnit, setNewDefaultUnit] = useState(ingredient?.unit || 'g');
   const [editingItem, setEditingItem] = useState(null);
+  const [newAliases, setNewAliases] = useState('');
   const [busy, setBusy] = useState(false);
   const [createNotice, setCreateNotice] = useState('');
 
@@ -44,9 +46,10 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     return () => { active = false; };
   }, [region, query]);
 
-  const exactMatch = useMemo(() => (
-    catalog.some((item) => item.name.toLowerCase() === query.trim().toLowerCase())
+  const matchingItem = useMemo(() => (
+    catalog.find((item) => ingredientNamesMatch(item.name, query, item.aliases)) || null
   ), [catalog, query]);
+  const exactMatch = Boolean(matchingItem);
 
   function selectIngredient(item) {
     onChange({
@@ -62,6 +65,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     setNewPrice(item.estimated_price || '');
     setNewPriceUnit(item.price_unit || item.default_unit || 'kg');
     setNewCategory(item.category || 'Other');
+    setNewAliases((item.aliases || []).join(', '));
     setOpen(false);
     setCreating(false);
     setEditingItem(null);
@@ -75,6 +79,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
     setNewDefaultUnit(item.default_unit || 'g');
     setNewPrice(item.estimated_price || '');
     setNewPriceUnit(item.price_unit || item.default_unit || 'kg');
+    setNewAliases((item.aliases || []).join(', '));
   }
 
   async function createIngredient() {
@@ -91,6 +96,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
         default_unit: newDefaultUnit || ingredient.unit || 'g',
         estimated_price: Number(newPrice || 0),
         price_unit: newPriceUnit || ingredient.unit || 'kg',
+        aliases: newAliases,
       };
       const item = editingItem
         ? await updateCatalogIngredient(user, { ...editingItem, ...draft })
@@ -108,6 +114,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
         estimated_price: Number(newPrice || 0),
         price_unit: newPriceUnit || ingredient.unit || 'kg',
         is_user_created: true,
+        aliases: newAliases.split(',').map((value) => value.trim()).filter(Boolean),
       };
 
       selectIngredient(localItem);
@@ -168,6 +175,10 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
             </button>
           )}
 
+          {query.trim() && matchingItem && query.trim().toLowerCase() !== matchingItem.name.toLowerCase() && !creating ? (
+            <div className="ingredient-match-notice">Already available as <strong>{matchingItem.name}</strong>. Select it above to avoid a duplicate.</div>
+          ) : null}
+
           {creating && (
             <div className="create-ingredient-box">
               <strong>{editingItem ? `Edit “${editingItem.name}”` : `Create “${query.trim()}”`}</strong>
@@ -178,6 +189,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
                 <input aria-label="Ingredient default unit" value={newDefaultUnit} onChange={(event) => setNewDefaultUnit(event.target.value)} placeholder="Default unit" />
                 <input aria-label="Ingredient price" type="number" min="0" step="0.01" value={newPrice} onChange={(event) => setNewPrice(event.target.value)} placeholder="Price" />
                 <input aria-label="Ingredient price unit" value={newPriceUnit} onChange={(event) => setNewPriceUnit(event.target.value)} placeholder="per kg" />
+                <input aria-label="Ingredient aliases" value={newAliases} onChange={(event) => setNewAliases(event.target.value)} placeholder="Aliases, separated by commas" />
               </div>
               <div className="create-ingredient-actions">
                 <button type="button" className="soft-btn" onClick={() => { setCreating(false); setEditingItem(null); }}>Cancel</button>

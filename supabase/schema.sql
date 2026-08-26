@@ -146,6 +146,7 @@ create table if not exists public.ingredient_catalog (
   price_unit text default '',
   created_by uuid references auth.users(id) on delete set null,
   is_user_created boolean default false,
+  aliases text[] not null default '{}',
   created_at timestamptz default now()
 );
 
