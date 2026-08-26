@@ -65,12 +65,25 @@ create table if not exists public.saved_public_meals (
   unique(user_id, source_meal_id)
 );
 
+create table if not exists public.recipe_activity (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  meal_id uuid references public.meals(id) on delete set null,
+  recipe_key text not null,
+  title text not null default '',
+  slug text not null default '',
+  activity_type text not null check (activity_type in ('saved', 'cooked', 'recent')),
+  occurred_at timestamptz not null default now(),
+  unique(user_id, recipe_key, activity_type)
+);
+
 alter table public.profiles enable row level security;
 alter table public.meals enable row level security;
 alter table public.meal_ingredients enable row level security;
 alter table public.weekly_plans enable row level security;
 alter table public.planned_meals enable row level security;
 alter table public.saved_public_meals enable row level security;
+alter table public.recipe_activity enable row level security;
 
 create policy "Profiles are owned by user" on public.profiles
   for all using (auth.uid() = id) with check (auth.uid() = id);
@@ -110,6 +123,12 @@ create policy "Users manage planned meals through own plans" on public.planned_m
 
 create policy "Users manage own saved public meals" on public.saved_public_meals
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create policy "Users manage own recipe activity" on public.recipe_activity
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+create index if not exists recipe_activity_user_type_date_idx
+  on public.recipe_activity (user_id, activity_type, occurred_at desc);
 
 create or replace function public.handle_new_user()
 returns trigger as $$

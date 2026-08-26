@@ -10,8 +10,8 @@ import MealCard from '@/components/MealCard';
 import MealForm from '@/components/MealForm';
 import MealDetailsModal from '@/components/MealDetailsModal';
 import { deleteMealForUser, loadAllVisibleMeals, loadMyMeals, loadProfileForUser, saveMealForUser } from '@/lib/dataStore';
-import { getLibraryHistory } from '@/lib/libraryHistory';
-import { recipePath } from '@/lib/recipeUtils';
+import { loadLibraryHistoryForUser } from '@/lib/libraryHistory';
+import { recipePath, recipeSlug } from '@/lib/recipeUtils';
 import { hasSupabaseEnv } from '@/lib/supabaseClient';
 
 function MealsContent({ user }) {
@@ -38,13 +38,13 @@ function MealsContent({ user }) {
     try {
       // The visible-meals query already includes the user's meals. Reusing it
       // avoids fetching every recipe and ingredient twice on each Library visit.
-      const loadedCatalog = await loadAllVisibleMeals(user);
+      const [loadedCatalog, loadedHistory] = await Promise.all([loadAllVisibleMeals(user), loadLibraryHistoryForUser(user)]);
       const loadedMeals = hasSupabaseEnv()
         ? loadedCatalog.filter((meal) => meal.user_id === user.id)
         : await loadMyMeals(user);
       setMeals(loadedMeals);
       setVisibleCatalog(loadedCatalog);
-      setHistory(getLibraryHistory());
+      setHistory(loadedHistory);
     } catch (err) {
       setError(err.message || 'Could not load meals.');
     } finally {
@@ -76,8 +76,12 @@ function MealsContent({ user }) {
   const tabMeals = useMemo(() => {
     if (!pathname.startsWith('/library') || libraryTab === 'created') return meals;
     const entries = history[libraryTab] || [];
-    const catalog = new Map([...meals, ...visibleCatalog].map((meal) => [String(meal.id), meal]));
-    return entries.map((entry) => catalog.get(String(entry.id))).filter(Boolean);
+    const allMeals = [...meals, ...visibleCatalog];
+    const byId = new Map(allMeals.map((meal) => [String(meal.id), meal]));
+    const bySlug = new Map(allMeals.map((meal) => [recipeSlug(meal.title), meal]));
+    // Built-in numeric/public IDs can shift as the catalogue grows. Prefer the
+    // stable title slug so history never resolves to a different recipe.
+    return entries.map((entry) => bySlug.get(entry.recipe_key || recipeSlug(entry.title || entry.slug)) || byId.get(String(entry.meal_id || entry.id))).filter(Boolean);
   }, [history, libraryTab, meals, pathname, visibleCatalog]);
 
   const filters = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Quick', 'Leftovers', 'Pantry', 'Public', 'Private'];

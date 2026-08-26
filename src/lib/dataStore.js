@@ -1091,6 +1091,8 @@ export async function syncOfflineChanges() {
       } else if (mutation.type === 'pantry-trip') {
         const transaction = await throwIfError(await supabase.from('pantry_transactions').upsert({ id: mutation.trip.id, user_id: user.id, store: mutation.trip.store, bought_at: mutation.trip.bought_at, notes: mutation.trip.notes }, { onConflict: 'id' }).select().single());
         if (mutation.trip.items.length) await throwIfError(await supabase.from('pantry_transaction_items').upsert(mutation.trip.items.map((item) => ({ transaction_id: transaction.id, ...item })), { onConflict: 'id' }));
+      } else if (mutation.type === 'recipe-activity') {
+        await throwIfError(await supabase.from('recipe_activity').upsert(mutation.payload, { onConflict: 'user_id,recipe_key,activity_type' }));
       }
       removeMutation(mutation.key); synced += 1;
     } catch { failed = true; break; }

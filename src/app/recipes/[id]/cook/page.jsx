@@ -7,7 +7,7 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { buildPantryConsumptionPreview, consumePantryForMeal, deletePantryItemForUser, loadAllVisibleMeals, loadPantryItemsForUser, saveLeftoversForUser, savePantryItemForUser, undoPantryConsumption } from '@/lib/dataStore';
 import { recipeSlug } from '@/lib/recipeUtils';
-import { rememberCookedRecipe } from '@/lib/libraryHistory';
+import { recordRecipeActivity } from '@/lib/libraryHistory';
 
 function CookContent({ user }) {
   const { id } = useParams();
@@ -35,7 +35,7 @@ function CookContent({ user }) {
       const leftoverBefore = pantry.find((item) => String(item.name).toLowerCase() === `leftover: ${meal.title}`.toLowerCase()) || null;
       const leftoverItem = remaining ? await saveLeftoversForUser(user, meal, remaining) : null;
       setPantryUpdates(updates); setLeftovers(remaining); setUndoData({ updates, leftoverBefore, leftoverItem });
-      setDone(true); rememberCookedRecipe(meal);
+      await recordRecipeActivity(user, meal, 'cooked').catch(() => null); setDone(true);
     } catch (err) { setError(err.message || 'Could not update your pantry.'); }
     finally { setSaving(false); }
   }

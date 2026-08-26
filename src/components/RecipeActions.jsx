@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { copyPublicMealForUser } from '@/lib/dataStore';
 import { hasSupabaseEnv, supabase } from '@/lib/supabaseClient';
-import { rememberRecentRecipe, rememberSavedRecipe } from '@/lib/libraryHistory';
+import { recordRecipeActivity } from '@/lib/libraryHistory';
 
 export default function RecipeActions({ meal }) {
   const [user, setUser] = useState(null);
@@ -13,17 +13,26 @@ export default function RecipeActions({ meal }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    rememberRecentRecipe(meal);
-    if (!hasSupabaseEnv()) { setUser({ id: 'demo-user', email: 'demo@trypan.app' }); setReady(true); return; }
-    supabase?.auth.getSession().then(({ data }) => { setUser(data?.session?.user || null); setReady(true); });
-  }, []);
+    // Record locally immediately so Recent never waits on a slow or unavailable
+    // auth request. Once the session resolves, the same event is synced online.
+    recordRecipeActivity(null, meal, 'recent').catch(() => null);
+    if (!hasSupabaseEnv()) { const demo = { id: 'demo-user', email: 'demo@trypan.app' }; setUser(demo); setReady(true); return; }
+    supabase?.auth.getSession()
+      .then(({ data }) => {
+        const sessionUser = data?.session?.user || null;
+        setUser(sessionUser);
+        if (sessionUser) recordRecipeActivity(sessionUser, meal, 'recent').catch(() => null);
+      })
+      .catch(() => null)
+      .finally(() => setReady(true));
+  }, [meal]);
 
   async function saveRecipe() {
     if (!user || saving) return;
     setSaving(true);
     try {
       const copied = await copyPublicMealForUser(user, meal);
-      rememberSavedRecipe(copied || meal);
+      await recordRecipeActivity(user, copied || meal, 'saved').catch(() => null);
       setSaved(true);
     } finally { setSaving(false); }
   }
