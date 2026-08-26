@@ -9,6 +9,7 @@ import { DAYS, SLOTS, addDays, addWeeks, formatWeekRange, getMonday } from '@/li
 import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
 import { buildSmartWeekPlan } from '@/lib/mealRecommendations.mjs';
 import { loadStudentSettings } from '@/lib/studentStore';
+import { plannedMealCost } from '@/lib/planMetrics.mjs';
 
 function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
@@ -58,6 +59,7 @@ function PlannerContent({ user }) {
   useEffect(() => {
     load();
   }, [load]);
+  useEffect(() => { window.addEventListener('trypan:data-synced', load); return () => window.removeEventListener('trypan:data-synced', load); }, [load]);
 
   const byId = useMemo(() => new Map(meals.map((meal) => [meal.id, meal])), [meals]);
 
@@ -70,14 +72,7 @@ function PlannerContent({ user }) {
   const grocery = useMemo(() => pantryAwareGrocery.filter((item) => Number(item.missing_quantity || 0) > 0).slice(0, 6), [pantryAwareGrocery]);
   const coveredItems = pantryAwareGrocery.filter((item) => item.has_enough).length;
 
-  const weekTotal = useMemo(
-    () => Object.entries(plan?.slots || {}).reduce((sum, [key, id]) => {
-      const meal = byId.get(id);
-      if (!meal) return sum;
-      return sum + (Number(meal.price || 0) / Math.max(1, Number(meal.servings || 1))) * Math.max(1, Number(plan?.servings?.[key] || 1));
-    }, 0),
-    [plan, byId]
-  );
+  const weekTotal = useMemo(() => plannedMealCost(meals, plan), [meals, plan]);
 
   const visibleMeals = useMemo(() => {
     const query = search.trim().toLowerCase();

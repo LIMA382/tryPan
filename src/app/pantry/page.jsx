@@ -94,6 +94,7 @@ function PantryContent({ user }) {
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { window.addEventListener('trypan:data-synced', load); return () => window.removeEventListener('trypan:data-synced', load); }, [load]);
 
   const pantryValue = useMemo(() => items.reduce((sum, item) => sum + estimatePantryItemValue(item), 0), [items]);
   const suggestedMeals = useMemo(() => suggestMealsFromPantry(meals, items), [meals, items]);

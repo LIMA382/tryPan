@@ -7,6 +7,7 @@ import AppFrame from '@/components/AppFrame';
 import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPantryTripsForUser, loadPlanForUser, rankMeals, suggestMealsFromPantry } from '@/lib/dataStore';
 import { DAYS } from '@/lib/date';
 import { defaultStudentSettings, loadStudentProgress, loadStudentSettings, saveStudentSettings, toggleStudentChallenge } from '@/lib/studentStore';
+import { plannedMealCost } from '@/lib/planMetrics.mjs';
 
 const money = (value) => `€${Number(value || 0).toFixed(2)}`;
 
@@ -35,7 +36,7 @@ function StudentContent({ user }) {
   const summary = useMemo(() => {
     const byId = new Map(data.meals.map((meal) => [meal.id, meal]));
     const planned = Object.values(data.plan?.slots || {}).map((id) => byId.get(id)).filter(Boolean);
-    const planCost = planned.reduce((sum, meal) => sum + Number(meal.price || 0), 0);
+    const planCost = plannedMealCost(data.meals, data.plan);
     const grocery = buildPantryAwareGroceryList(data.meals, data.plan, data.pantry);
     const missingCost = grocery.reduce((sum, item) => sum + Number(item.missing_cost || 0), 0);
     const coverage = grocery.length ? Math.round((grocery.filter((item) => item.has_enough).length / grocery.length) * 100) : 0;

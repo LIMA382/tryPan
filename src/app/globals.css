@@ -3320,7 +3320,8 @@ textarea:focus-visible,
 .ingredient-price-row label { display: grid; gap: 3px; }
 .ingredient-price-row label span { color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; }
 
-.offline-banner { position: fixed; z-index: 3000; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); padding: 10px 16px; border-radius: 999px; color: white; background: #45441a; box-shadow: var(--shadow-sm); font-weight: 800; }
+.offline-banner { position: fixed; z-index: 3000; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: .7rem; padding: 10px 16px; border-radius: 999px; color: white; background: #45441a; box-shadow: var(--shadow-sm); font-weight: 800; }
+.offline-banner button { border: 0; border-radius: 999px; padding: .35rem .65rem; background: white; color: #45441a; font: inherit; cursor: pointer; }
 .install-app-button { position: fixed; z-index: 2500; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); border: 0; border-radius: 999px; padding: 12px 18px; background: var(--brand-terracotta); color: white; box-shadow: var(--shadow-sm); font: inherit; font-weight: 900; cursor: pointer; }
 
 @media (max-width: 900px) {

@@ -19,6 +19,8 @@ import { canonicalIngredientName, ingredientAliasesForName, ingredientIdentityKe
 import { compatibleUnitKey, fromBaseQuantity, normalizeUnit, toBaseQuantity, unitInfo } from './unitConversion.mjs';
 import { buildPantryConsumptionPreview } from './pantryConsumption.mjs';
 import { rankMeals } from './mealRecommendations.mjs';
+import { enqueueMutation, isOffline, pendingMutations, readSnapshot, removeMutation, writeSnapshot } from './offlineState.mjs';
+import { plannedMealCost } from './planMetrics.mjs';
 
 export { buildPantryConsumptionPreview, rankMeals };
 
@@ -29,6 +31,14 @@ function validUuidOrNull(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
     ? candidate
     : null;
+}
+
+function offlineUuid() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    return (character === 'x' ? random : (random & 0x3) | 0x8).toString(16);
+  });
 }
 
 const PERSONAL_CATALOG_KEY = 'trypan-personal-ingredient-catalog-v1';
@@ -200,6 +210,28 @@ function clearMealCache() {
 }
 function clearCachedPrefix(prefix) {
   for (const key of appDataCache.keys()) if (key.startsWith(prefix)) appDataCache.delete(key);
+}
+
+function announceOfflineState(detail) {
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('trypan:offline-state', { detail }));
+}
+
+async function withOfflineSnapshot(user, resource, loader) {
+  const cached = readSnapshot(user?.id, resource);
+  if (isOffline() && cached) {
+    announceOfflineState({ usingSnapshot: true, savedAt: cached.savedAt, pending: pendingMutations().length });
+    return cached.data;
+  }
+  try {
+    const value = await loader();
+    writeSnapshot(user?.id, resource, value);
+    return value;
+  } catch (error) {
+    const snapshot = readSnapshot(user?.id, resource);
+    if (!snapshot) throw error;
+    announceOfflineState({ usingSnapshot: true, savedAt: snapshot.savedAt, pending: pendingMutations().length });
+    return snapshot.data;
+  }
 }
 
 function cleanTags(tags) {
@@ -533,6 +565,7 @@ export async function loadAllVisibleMeals(user) {
   }
 
   return cachedData(`meals:visible:${user.id}`, async () => {
+    return withOfflineSnapshot(user, 'meals-visible', async () => {
     const data = await throwIfError(
       await supabase
         .from('meals')
@@ -544,6 +577,7 @@ export async function loadAllVisibleMeals(user) {
     const existingTitles = new Set(visible.map((meal) => meal.title.toLowerCase()));
     const curated = localGetPublicMeals().filter((meal) => !existingTitles.has(meal.title.toLowerCase()));
     return [...visible, ...curated];
+    });
   });
 }
 
@@ -678,6 +712,7 @@ export async function loadPlanForUser(user, weekStartDate = getMonday()) {
   }
 
   return cachedData(`plan:${user.id}:${weekStartDate}`, async () => {
+    return withOfflineSnapshot(user, `plan-${weekStartDate}`, async () => {
     const planRow = await getOrCreateWeekPlan(user, weekStartDate);
     const planned = await throwIfError(await supabase.from('planned_meals').select('*').eq('weekly_plan_id', planRow.id));
     const plan = emptyPlan();
@@ -689,6 +724,7 @@ export async function loadPlanForUser(user, weekStartDate = getMonday()) {
       plan.servings[key] = Math.max(1, Number(row.servings || 1));
     }
     return plan;
+    });
   });
 }
 
@@ -697,6 +733,18 @@ export async function setPlannedMealForUser(user, plan, day, slot, mealId, servi
   const servings = Math.max(1, Number(servingCount || plan?.servings?.[key] || 1));
   if (isDemo()) return localSetPlannedMeal(day, slot, mealId, servings);
   clearCachedPrefix(`plan:${user.id}:`);
+
+  const optimistic = {
+    ...plan,
+    slots: { ...(plan?.slots || emptyPlan().slots), [key]: mealId || null },
+    servings: { ...(plan?.servings || {}), [key]: mealId ? servings : undefined },
+  };
+  if (isOffline()) {
+    writeSnapshot(user.id, `plan-${plan?.week_start_date || getMonday()}`, optimistic);
+    const queue = enqueueMutation({ key: `${user.id}:plan:${plan?.week_start_date || getMonday()}:${key}`, type: 'plan-slot', userId: user.id, weekStartDate: plan?.week_start_date || getMonday(), day, slot, mealId: mealId || null, servings });
+    announceOfflineState({ pending: queue.length, savedOffline: true });
+    return optimistic;
+  }
 
   const planId = plan?.id || (await getOrCreateWeekPlan(user, plan?.week_start_date || getMonday())).id;
 
@@ -720,15 +768,12 @@ export async function setPlannedMealForUser(user, plan, day, slot, mealId, servi
     );
   }
 
-  return {
-    ...plan,
+  const savedPlan = {
+    ...optimistic,
     id: planId,
-    slots: {
-      ...(plan?.slots || emptyPlan().slots),
-      [key]: mealId || null,
-    },
-    servings: { ...(plan?.servings || {}), [key]: mealId ? servings : undefined },
   };
+  writeSnapshot(user.id, `plan-${plan?.week_start_date || getMonday()}`, savedPlan);
+  return savedPlan;
 }
 
 
@@ -797,10 +842,7 @@ export function buildPantryRecap(trips = [], pantryItems = [], meals = [], plan 
     .sort((a, b) => b.week.localeCompare(a.week))
     .slice(0, 8);
 
-  const plannedMealValue = roundMoney(Object.values(plan?.slots || {}).reduce((sum, mealId) => {
-    const meal = byId.get(mealId);
-    return sum + Number(meal?.price || 0);
-  }, 0));
+  const plannedMealValue = plannedMealCost(meals, plan);
 
   return {
     currentWeek,
@@ -828,6 +870,19 @@ export async function saveSmartPlanForUser(user, plan, additions = []) {
     let next = plan;
     for (const item of additions) next = localSetPlannedMeal(item.day, item.slot, item.mealId, item.servings);
     return next;
+  }
+  if (isOffline()) {
+    const optimistic = { ...plan, slots: { ...(plan?.slots || {}) }, servings: { ...(plan?.servings || {}) } };
+    let queue = pendingMutations();
+    for (const item of additions) {
+      const key = `${item.day}-${item.slot}`;
+      optimistic.slots[key] = item.mealId;
+      optimistic.servings[key] = item.servings;
+      queue = enqueueMutation({ key: `${user.id}:plan:${plan?.week_start_date || getMonday()}:${key}`, type: 'plan-slot', userId: user.id, weekStartDate: plan?.week_start_date || getMonday(), day: item.day, slot: item.slot, mealId: item.mealId, servings: item.servings });
+    }
+    writeSnapshot(user.id, `plan-${plan?.week_start_date || getMonday()}`, optimistic);
+    announceOfflineState({ pending: queue.length, savedOffline: true });
+    return optimistic;
   }
   clearCachedPrefix(`plan:${user.id}:`);
   const planId = plan?.id || (await getOrCreateWeekPlan(user, plan?.week_start_date || getMonday())).id;
@@ -902,9 +957,11 @@ export async function loadPantryItemsForUser(user) {
   if (!hasSupabaseEnv() || !supabase) return [];
 
   return cachedData(`pantry:items:${user.id}`, async () => {
+    return withOfflineSnapshot(user, 'pantry-items', async () => {
     const { data, error } = await supabase.from('pantry_items').select('*, ingredient_catalog(*)').eq('user_id', user.id).order('category', { ascending: true }).order('name', { ascending: true });
     if (error) throw error;
     return (data || []).map(normalizePantryItem);
+    });
   });
 }
 
@@ -912,9 +969,11 @@ export async function loadPantryTripsForUser(user) {
   if (!hasSupabaseEnv() || !supabase) return [];
 
   return cachedData(`pantry:trips:${user.id}`, async () => {
+    return withOfflineSnapshot(user, 'pantry-trips', async () => {
     const { data, error } = await supabase.from('pantry_transactions').select('*, pantry_transaction_items(*)').eq('user_id', user.id).order('bought_at', { ascending: false }).order('created_at', { ascending: false }).limit(20);
     if (error) throw error;
     return (data || []).map(normalizePantryTrip);
+    });
   });
 }
 
@@ -937,6 +996,18 @@ export async function savePantryItemForUser(user, item) {
   };
 
   if (!payload.name) throw new Error('Ingredient name is required.');
+
+  if (isOffline()) {
+    const snapshot = readSnapshot(user.id, 'pantry-items');
+    const current = snapshot?.data || [];
+    const wasNew = !validUuidOrNull(item.id);
+    const localId = validUuidOrNull(item.id) || offlineUuid();
+    const saved = normalizePantryItem({ ...item, ...payload, id: localId });
+    writeSnapshot(user.id, 'pantry-items', current.some((entry) => entry.id === localId) ? current.map((entry) => entry.id === localId ? saved : entry) : [saved, ...current]);
+    const queue = enqueueMutation({ key: `${user.id}:pantry:${localId}`, type: 'pantry-upsert', userId: user.id, localId, isNew: wasNew, payload: { ...payload, id: localId } });
+    announceOfflineState({ pending: queue.length, savedOffline: true });
+    return saved;
+  }
 
   if (item.id) {
     const { data, error } = await supabase
@@ -965,6 +1036,18 @@ export async function deletePantryItemForUser(user, id) {
   clearCachedPrefix(`pantry:items:${user?.id}`);
   if (!hasSupabaseEnv() || !supabase) return;
 
+  if (isOffline()) {
+    const snapshot = readSnapshot(user.id, 'pantry-items');
+    writeSnapshot(user.id, 'pantry-items', (snapshot?.data || []).filter((item) => item.id !== id));
+    let queue;
+    const mutationKey = `${user.id}:pantry:${id}`;
+    const queuedCreate = pendingMutations().find((item) => item.key === mutationKey && item.type === 'pantry-upsert' && item.isNew);
+    if (queuedCreate) queue = removeMutation(mutationKey);
+    else queue = enqueueMutation({ key: mutationKey, type: 'pantry-delete', userId: user.id, id });
+    announceOfflineState({ pending: queue.length, savedOffline: true });
+    return;
+  }
+
   const { error } = await supabase
     .from('pantry_items')
     .delete()
@@ -972,6 +1055,37 @@ export async function deletePantryItemForUser(user, id) {
     .eq('user_id', user.id);
 
   if (error) throw error;
+}
+
+export async function syncOfflineChanges() {
+  if (!supabase || isOffline()) return { synced: 0, pending: pendingMutations().length };
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth?.user;
+  if (!user) return { synced: 0, pending: pendingMutations().length };
+  let synced = 0;
+  let failed = false;
+  for (const mutation of pendingMutations().filter((item) => item.userId === user.id)) {
+    try {
+      if (mutation.type === 'plan-slot') {
+        const planRow = await getOrCreateWeekPlan(user, mutation.weekStartDate);
+        if (mutation.mealId) await throwIfError(await supabase.from('planned_meals').upsert({ weekly_plan_id: planRow.id, meal_id: mutation.mealId, day_of_week: mutation.day, slot: mutation.slot, servings: mutation.servings }, { onConflict: 'weekly_plan_id,day_of_week,slot' }));
+        else await throwIfError(await supabase.from('planned_meals').delete().eq('weekly_plan_id', planRow.id).eq('day_of_week', mutation.day).eq('slot', mutation.slot));
+      } else if (mutation.type === 'pantry-upsert') {
+        const { id, ...payload } = mutation.payload;
+        await throwIfError(await supabase.from('pantry_items').upsert({ id, ...payload }, { onConflict: 'id' }));
+      } else if (mutation.type === 'pantry-delete') {
+        await throwIfError(await supabase.from('pantry_items').delete().eq('id', mutation.id).eq('user_id', user.id));
+      } else if (mutation.type === 'pantry-trip') {
+        const transaction = await throwIfError(await supabase.from('pantry_transactions').upsert({ id: mutation.trip.id, user_id: user.id, store: mutation.trip.store, bought_at: mutation.trip.bought_at, notes: mutation.trip.notes }, { onConflict: 'id' }).select().single());
+        if (mutation.trip.items.length) await throwIfError(await supabase.from('pantry_transaction_items').upsert(mutation.trip.items.map((item) => ({ transaction_id: transaction.id, ...item })), { onConflict: 'id' }));
+      }
+      removeMutation(mutation.key); synced += 1;
+    } catch { failed = true; break; }
+  }
+  clearCachedPrefix('plan:'); clearCachedPrefix('pantry:');
+  const pending = pendingMutations().length;
+  announceOfflineState({ pending, synced });
+  return { synced, pending, failed };
 }
 
 export async function consumePantryForMeal(user, meal, servingsCooked = null) {
@@ -1081,6 +1195,24 @@ export async function addPantryTripForUser(user, trip) {
     }));
 
   if (!cleanItems.length) throw new Error('Add at least one pantry item.');
+
+  if (isOffline()) {
+    const localId = offlineUuid();
+    const idempotentItems = cleanItems.map((item) => ({ ...item, id: offlineUuid() }));
+    const cleanTrip = { id: localId, user_id: user.id, store: trip.store || '', bought_at: trip.bought_at || new Date().toISOString().slice(0, 10), notes: trip.notes || '', items: idempotentItems, item_count: idempotentItems.length, created_at: new Date().toISOString() };
+    for (const item of idempotentItems) {
+      const pantryAddition = { ...item };
+      delete pantryAddition.id;
+      const pantry = readSnapshot(user.id, 'pantry-items')?.data || [];
+      const existing = pantry.find((stock) => ingredientIdentityKey(stock) === ingredientIdentityKey(pantryAddition) && compatibleUnitKey(stock.unit) === compatibleUnitKey(pantryAddition.unit));
+      await savePantryItemForUser(user, { ...(existing || {}), ...pantryAddition, id: existing?.id, quantity: Number(existing?.quantity || 0) + pantryAddition.quantity });
+    }
+    const trips = readSnapshot(user.id, 'pantry-trips')?.data || [];
+    writeSnapshot(user.id, 'pantry-trips', [cleanTrip, ...trips].slice(0, 20));
+    const queue = enqueueMutation({ key: `${user.id}:trip:${localId}`, type: 'pantry-trip', userId: user.id, trip: cleanTrip });
+    announceOfflineState({ pending: queue.length, savedOffline: true });
+    return cleanTrip;
+  }
 
   const { data: transaction, error: transactionError } = await supabase
     .from('pantry_transactions')
