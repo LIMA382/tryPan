@@ -15,7 +15,7 @@ import {
   emptyPlan,
 } from './localStore';
 import { getMonday } from './date';
-import { canonicalIngredientName, ingredientIdentityKey, ingredientMatchesQuery, ingredientNamesMatch, normalizedAliases } from './ingredientIdentity';
+import { canonicalIngredientName, ingredientAliasesForName, ingredientIdentityKey, ingredientMatchesQuery, ingredientMatchRank, ingredientNamesMatch, normalizedAliases } from './ingredientIdentity.mjs';
 
 export { buildGroceryList };
 
@@ -318,7 +318,7 @@ function normalizeCatalogIngredient(row) {
     price_unit: row.price_unit || row.default_unit || '',
     created_by: row.created_by || null,
     is_user_created: Boolean(row.is_user_created),
-    aliases: normalizedAliases(row.aliases),
+    aliases: normalizedAliases([...(row.aliases || []), ...ingredientAliasesForName(row.name)]),
     created_at: row.created_at || null,
   };
 }
@@ -462,6 +462,7 @@ export async function loadIngredientCatalog(region = 'pt', query = '') {
 
   return catalog
     .filter((item) => ingredientMatchesQuery(item, needle))
+    .sort((a, b) => ingredientMatchRank(a, needle) - ingredientMatchRank(b, needle) || a.name.localeCompare(b.name))
     .slice(0, 30);
 }
 

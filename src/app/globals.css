@@ -3314,7 +3314,7 @@ textarea:focus-visible,
 .ingredient-price-zone .card-header p { margin: 5px 0 0; color: var(--muted); }
 .ingredient-price-search { max-width: 520px; margin: 18px 0; }
 .ingredient-price-list { display: grid; gap: 8px; }
-.ingredient-price-row { display: grid; grid-template-columns: minmax(180px, 1fr) 120px 120px auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.58); }
+.ingredient-price-row { display: grid; grid-template-columns: minmax(150px, .8fr) 110px 110px minmax(210px, 1.2fr) auto; gap: 10px; align-items: end; padding: 12px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,255,255,.58); }
 .ingredient-price-row > div strong, .ingredient-price-row > div small { display: block; }
 .ingredient-price-row small { color: var(--muted); }
 .ingredient-price-row label { display: grid; gap: 3px; }

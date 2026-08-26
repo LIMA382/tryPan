@@ -1,18 +1,34 @@
 const CANONICAL_ALIASES = {
+  'all purpose flour': ['all-purpose flour', 'plain flour'],
+  'aubergine': ['aubergines', 'eggplant', 'eggplants'],
+  'baking soda': ['bicarbonate of soda', 'sodium bicarbonate'],
+  'banana': ['bananas'],
   'bell pepper': ['bell peppers', 'capsicum', 'sweet pepper', 'sweet peppers'],
   'black bean': ['black beans'],
+  'carrot': ['carrots'],
   'chickpea': ['chickpeas', 'garbanzo bean', 'garbanzo beans'],
+  'chilli pepper': ['chili pepper', 'chilli peppers', 'chili peppers'],
   'coriander': ['cilantro', 'coriander leaves'],
   'courgette': ['courgettes', 'zucchini', 'zucchinis'],
+  'double cream': ['heavy cream', 'heavy whipping cream'],
   'egg': ['eggs'],
+  'icing sugar': ['confectioners sugar', 'confectioner sugar', 'powdered sugar'],
   'green onion': ['green onions', 'scallion', 'scallions', 'spring onion', 'spring onions'],
   'ground beef': ['beef mince', 'minced beef'],
+  'ground pork': ['minced pork', 'pork mince'],
   'kidney bean': ['kidney beans'],
+  'maize': ['corn', 'sweetcorn', 'sweet corn'],
   'lentil': ['lentils'],
+  'mushroom': ['mushrooms'],
+  'onion': ['onions'],
+  'potato': ['potatoes'],
   'red pepper': ['red peppers'],
+  'rocket': ['arugula'],
   'shrimp': ['shrimps', 'prawn', 'prawns'],
+  'soy sauce': ['soya sauce'],
   'tomato': ['tomatoes', 'fresh tomato', 'fresh tomatoes'],
   'wrap': ['wraps', 'tortilla', 'tortillas'],
+  'yoghurt': ['yogurt'],
 };
 
 const aliasToCanonical = new Map();
@@ -36,6 +52,11 @@ export function normalizedAliases(values = []) {
   return [...new Set(source.map(cleanIngredientName).filter(Boolean))];
 }
 
+export function ingredientAliasesForName(value) {
+  const canonical = canonicalIngredientName(value);
+  return normalizedAliases(CANONICAL_ALIASES[canonical] || []);
+}
+
 export function ingredientNamesMatch(left, right, leftAliases = [], rightAliases = []) {
   const leftNames = [left, ...normalizedAliases(leftAliases)].map(canonicalIngredientName);
   const rightNames = new Set([right, ...normalizedAliases(rightAliases)].map(canonicalIngredientName));
@@ -49,6 +70,18 @@ export function ingredientMatchesQuery(item, query) {
   const names = [item?.name, ...(item?.aliases || [])].map(cleanIngredientName);
   return names.some((name) => name.includes(needle) || canonicalIngredientName(name).includes(canonicalNeedle))
     || cleanIngredientName(item?.category).includes(needle);
+}
+
+export function ingredientMatchRank(item, query) {
+  const needle = cleanIngredientName(query);
+  if (!needle) return 4;
+  const canonicalNeedle = canonicalIngredientName(needle);
+  const name = cleanIngredientName(item?.name);
+  const aliases = normalizedAliases(item?.aliases);
+  if (name === needle) return 0;
+  if (canonicalIngredientName(name) === canonicalNeedle || aliases.some((alias) => alias === needle)) return 1;
+  if (name.startsWith(needle) || aliases.some((alias) => alias.startsWith(needle))) return 2;
+  return 3;
 }
 
 export function ingredientIdentityKey(item = {}) {

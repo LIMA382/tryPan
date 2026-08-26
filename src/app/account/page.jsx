@@ -43,7 +43,11 @@ function AccountContent({ user }) {
       if (!active) return;
       const visible = catalog.slice(0, 24);
       setIngredients(visible);
-      setPriceDrafts(Object.fromEntries(visible.map((item) => [item.id, { estimated_price: item.estimated_price || '', price_unit: item.price_unit || item.default_unit || '' }])));
+      setPriceDrafts(Object.fromEntries(visible.map((item) => [item.id, {
+        estimated_price: item.estimated_price || '',
+        price_unit: item.price_unit || item.default_unit || '',
+        aliases: (item.aliases || []).join(', '),
+      }])));
     }, 180);
     return () => { active = false; clearTimeout(timer); };
   }, [region, priceSearch]);
@@ -54,9 +58,9 @@ function AccountContent({ user }) {
     try {
       const savedItem = await updateCatalogIngredient(user, { ...item, ...priceDrafts[item.id], region });
       setIngredients((current) => current.map((entry) => entry.id === item.id ? savedItem : entry));
-      setMessage(`${item.name} price updated.`);
+      setMessage(`${item.name} settings updated.`);
     } catch (err) {
-      setMessage(err.message || 'Could not update ingredient price.');
+      setMessage(err.message || 'Could not update ingredient settings.');
     } finally {
       setPriceSaving('');
     }
@@ -170,14 +174,14 @@ function AccountContent({ user }) {
 
       <section className="panel-soft ingredient-price-zone">
         <div className="card-header">
-          <div><span className="student-kicker">Product settings</span><h3>Ingredient prices</h3><p>Keep your usual supermarket prices in one simple place.</p></div>
+          <div><span className="student-kicker">Product settings</span><h3>Ingredient catalogue</h3><p>Keep your usual prices and alternative English names in one simple place.</p></div>
           <span className="badge">{regionLabel(region)}</span>
         </div>
         <div className="field ingredient-price-search"><label htmlFor="price-search">Find a product</label><input id="price-search" value={priceSearch} onChange={(event) => setPriceSearch(event.target.value)} placeholder="Search eggs, milk, rice…" /></div>
         <div className="ingredient-price-list">
           {ingredients.map((item) => {
             const draft = priceDrafts[item.id] || {};
-            return <div className="ingredient-price-row" key={item.id}><div><strong>{item.name}</strong><small>{item.category}</small></div><label><span>Price €</span><input type="number" min="0" step="0.01" value={draft.estimated_price} onChange={(event) => setPriceDrafts((current) => ({ ...current, [item.id]: { ...draft, estimated_price: event.target.value } }))} /></label><label><span>Per</span><input value={draft.price_unit} onChange={(event) => setPriceDrafts((current) => ({ ...current, [item.id]: { ...draft, price_unit: event.target.value } }))} placeholder={item.default_unit || 'unit'} /></label><button type="button" className="soft-btn" disabled={priceSaving === item.id} onClick={() => saveIngredientPrice(item)}>{priceSaving === item.id ? 'Saving…' : 'Save price'}</button></div>;
+            return <div className="ingredient-price-row" key={item.id}><div><strong>{item.name}</strong><small>{item.category}</small></div><label><span>Price €</span><input type="number" min="0" step="0.01" value={draft.estimated_price} onChange={(event) => setPriceDrafts((current) => ({ ...current, [item.id]: { ...draft, estimated_price: event.target.value } }))} /></label><label><span>Per</span><input value={draft.price_unit} onChange={(event) => setPriceDrafts((current) => ({ ...current, [item.id]: { ...draft, price_unit: event.target.value } }))} placeholder={item.default_unit || 'unit'} /></label><label className="ingredient-alias-field"><span>Also known as</span><input value={draft.aliases || ''} onChange={(event) => setPriceDrafts((current) => ({ ...current, [item.id]: { ...draft, aliases: event.target.value } }))} placeholder="Aliases, separated by commas" /></label><button type="button" className="soft-btn" disabled={priceSaving === item.id} onClick={() => saveIngredientPrice(item)}>{priceSaving === item.id ? 'Saving…' : 'Save'}</button></div>;
           })}
           {!ingredients.length && <p>No products match that search.</p>}
         </div>

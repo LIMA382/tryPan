@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { createCatalogIngredient, loadIngredientCatalog, updateCatalogIngredient } from '@/lib/dataStore';
-import { ingredientNamesMatch } from '@/lib/ingredientIdentity';
+import { ingredientNamesMatch } from '@/lib/ingredientIdentity.mjs';
 
 const CATEGORIES = ['Produce', 'Protein', 'Dairy', 'Pantry', 'Frozen', 'Spices', 'Bakery', 'Other'];
 
@@ -161,7 +161,7 @@ export default function IngredientPicker({ user, region = 'pt', ingredient, onCh
               <button type="button" className="ingredient-select-button" onClick={() => selectIngredient(item)}>
                 <span>
                 <strong>{item.name}</strong>
-                <small>{item.category} · {item.default_unit}</small>
+                <small>{item.category} · {item.default_unit}{item.aliases?.length ? ` · also ${item.aliases.slice(0, 2).join(', ')}` : ''}</small>
                 </span>
                 <em>{formatPrice(item)}</em>
               </button>
