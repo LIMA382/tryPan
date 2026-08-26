@@ -17,6 +17,9 @@ import {
 import { getMonday } from './date';
 import { canonicalIngredientName, ingredientAliasesForName, ingredientIdentityKey, ingredientMatchesQuery, ingredientMatchRank, ingredientNamesMatch, normalizedAliases } from './ingredientIdentity.mjs';
 import { compatibleUnitKey, fromBaseQuantity, normalizeUnit, toBaseQuantity, unitInfo } from './unitConversion.mjs';
+import { buildPantryConsumptionPreview } from './pantryConsumption.mjs';
+
+export { buildPantryConsumptionPreview };
 
 export { buildGroceryList };
 
@@ -966,21 +969,33 @@ export async function deletePantryItemForUser(user, id) {
   if (error) throw error;
 }
 
-export async function consumePantryForMeal(user, meal) {
+export async function consumePantryForMeal(user, meal, servingsCooked = null) {
   const pantry = await loadPantryItemsForUser(user);
   const updates = [];
 
-  for (const ingredient of meal?.ingredients || []) {
-    const match = pantry.find((item) => String(item.name).trim().toLowerCase() === String(ingredient.name).trim().toLowerCase() && compatibleUnitKey(item.unit) === compatibleUnitKey(ingredient.unit));
+  const preview = buildPantryConsumptionPreview(meal, pantry, servingsCooked);
+  for (const line of preview) {
+    const match = line.pantryItem;
     if (!match) continue;
-    const remainingBase = Math.max(0, toBaseQuantity(match.quantity, match.unit) - toBaseQuantity(ingredient.quantity, ingredient.unit));
-    const remaining = fromBaseQuantity(remainingBase, match.unit);
+    const remaining = line.remaining_quantity;
     if (remaining <= 0.000001) await deletePantryItemForUser(user, match.id);
     else await savePantryItemForUser(user, { ...match, quantity: remaining });
-    updates.push({ name: match.name, before: match.quantity, after: remaining, unit: match.unit });
+    updates.push({ name: match.name, before: match.quantity, after: remaining, unit: match.unit, before_item: match });
   }
 
   return updates;
+}
+
+export async function undoPantryConsumption(user, updates = []) {
+  const restored = [];
+  for (const update of updates) {
+    const before = update.before_item || { name: update.name, quantity: update.before, unit: update.unit, category: 'Other' };
+    const pantry = await loadPantryItemsForUser(user);
+    const current = pantry.find((item) => ingredientIdentityKey(item) === ingredientIdentityKey(before)
+      && compatibleUnitKey(item.unit) === compatibleUnitKey(before.unit));
+    restored.push(await savePantryItemForUser(user, { ...before, id: current?.id || undefined, quantity: Number(before.quantity || update.before || 0) }));
+  }
+  return restored;
 }
 
 export async function saveLeftoversForUser(user, meal, portions) {

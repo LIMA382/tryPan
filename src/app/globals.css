@@ -3517,3 +3517,12 @@ textarea:focus-visible,
 .serving-stepper button:hover { background: #fff; transform: scale(1.06); }
 .serving-stepper.compact { gap: .3rem; margin-top: .3rem; }
 .serving-stepper.compact button { width: 1.3rem; height: 1.3rem; }
+.cook-review { display: grid; gap: .75rem; margin-top: 1rem; }
+.cook-review-line { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 0; border-bottom: 1px solid rgba(79,76,22,.12); }
+.cook-review-line div { display: grid; gap: .18rem; }
+.cook-review-line small, .cook-review-note { color: var(--muted, #777464); }
+.cook-review-line > span { flex: 0 0 auto; font-size: .78rem; font-weight: 850; }
+.cook-review-line.ready > span { color: #55722f; }
+.cook-review-line.short > span { color: #a75a2e; }
+.cook-review-line.not-tracked > span { color: #817d70; }
+.cook-complete-actions { display: flex; flex-wrap: wrap; gap: .65rem; margin-top: 1rem; }
