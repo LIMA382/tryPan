@@ -21,6 +21,7 @@ import { buildPantryConsumptionPreview } from './pantryConsumption.mjs';
 import { rankMeals } from './mealRecommendations.mjs';
 import { enqueueMutation, isOffline, pendingMutations, readSnapshot, removeMutation, writeSnapshot } from './offlineState.mjs';
 import { plannedMealCost } from './planMetrics.mjs';
+import { isDatabaseMealId } from './mealPersistence.mjs';
 
 export { buildPantryConsumptionPreview, rankMeals };
 
@@ -28,9 +29,7 @@ export { buildGroceryList };
 
 function validUuidOrNull(value) {
   const candidate = String(value || '').trim();
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
-    ? candidate
-    : null;
+  return isDatabaseMealId(candidate) ? candidate : null;
 }
 
 function offlineUuid() {
@@ -628,18 +627,14 @@ export async function saveMealForUser(user, meal) {
     meal_type: meal.meal_type || 'both',
     prep_time: Number(meal.prep_time || 20),
     servings: Number(meal.servings || 2),
-    price: calculatedPrice,
+    price: calculatedPrice || Number(meal.price || 0),
     tags: cleanTags(meal.tags),
     is_public: Boolean(meal.is_public),
     updated_at: new Date().toISOString(),
   };
 
   let saved;
-  const editableId =
-    meal.id &&
-    !String(meal.id).startsWith('seed-') &&
-    !String(meal.id).startsWith('public-') &&
-    !String(meal.id).startsWith('starter-public-');
+  const editableId = isDatabaseMealId(meal.id);
 
   if (editableId) {
     const data = await throwIfError(
@@ -728,10 +723,27 @@ export async function loadPlanForUser(user, weekStartDate = getMonday()) {
   });
 }
 
+export async function ensureMealForPlanning(user, meal) {
+  if (!meal) throw new Error('Choose a meal before adding it to the planner.');
+  if (isDemo() || isDatabaseMealId(meal.id)) return meal;
+
+  const { data, error } = await supabase
+    .from('meals')
+    .select('id, user_id')
+    .eq('user_id', user.id)
+    .eq('title', meal.title)
+    .limit(1);
+  if (error) throw error;
+  if (data?.[0]) return { ...meal, id: data[0].id, user_id: user.id, is_public: false };
+
+  return saveMealForUser(user, { ...meal, id: undefined, user_id: user.id, is_public: false });
+}
+
 export async function setPlannedMealForUser(user, plan, day, slot, mealId, servingCount = null) {
   const key = `${day}-${slot}`;
   const servings = Math.max(1, Number(servingCount || plan?.servings?.[key] || 1));
   if (isDemo()) return localSetPlannedMeal(day, slot, mealId, servings);
+  if (mealId && !isDatabaseMealId(mealId)) throw new Error('This built-in recipe must be saved before it can be planned.');
   clearCachedPrefix(`plan:${user.id}:`);
 
   const optimistic = {
@@ -871,6 +883,7 @@ export async function saveSmartPlanForUser(user, plan, additions = []) {
     for (const item of additions) next = localSetPlannedMeal(item.day, item.slot, item.mealId, item.servings);
     return next;
   }
+  if (additions.some((item) => !isDatabaseMealId(item.mealId))) throw new Error('One or more built-in recipes must be saved before this plan can be added.');
   if (isOffline()) {
     const optimistic = { ...plan, slots: { ...(plan?.slots || {}) }, servings: { ...(plan?.servings || {}) } };
     let queue = pendingMutations();

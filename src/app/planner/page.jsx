@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import { DAYS, SLOTS, addDays, addWeeks, formatWeekRange, getMonday } from '@/lib/date';
-import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
+import { buildPantryAwareGroceryList, ensureMealForPlanning, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
 import { buildSmartWeekPlan } from '@/lib/mealRecommendations.mjs';
 import { loadStudentSettings } from '@/lib/studentStore';
 import { plannedMealCost } from '@/lib/planMetrics.mjs';
@@ -116,7 +116,20 @@ function PlannerContent({ user }) {
   }
 
   async function setSlot(day, slot, mealId) {
-    setPlan(await setPlannedMealForUser(user, plan, day, slot, mealId));
+    setError('');
+    try {
+      let resolvedId = mealId;
+      if (mealId) {
+        const original = byId.get(mealId);
+        const persisted = await ensureMealForPlanning(user, original);
+        resolvedId = persisted.id;
+        if (resolvedId !== mealId) {
+          setMeals((current) => [persisted, ...current.filter((item) => item.id !== mealId && item.id !== resolvedId)]);
+          setSelectedMealId(resolvedId);
+        }
+      }
+      setPlan(await setPlannedMealForUser(user, plan, day, slot, resolvedId));
+    } catch (err) { setError(err.message || 'Could not add this meal to the timetable.'); }
   }
 
   async function drop(day, slot, event) {
@@ -153,7 +166,17 @@ function PlannerContent({ user }) {
 
   async function applySmartPlan() {
     setAutoPlanning(true); setError('');
-    try { await saveSmartPlanForUser(user, plan, planPreview.additions); setPlan({ ...planPreview, additions: undefined }); setPlanPreview(null); }
+    try {
+      const selectedIds = [...new Set(planPreview.additions.map((item) => item.mealId))];
+      const persistedMeals = await Promise.all(selectedIds.map((id) => ensureMealForPlanning(user, byId.get(id))));
+      const resolved = new Map(selectedIds.map((id, index) => [id, persistedMeals[index]]));
+      const additions = planPreview.additions.map((item) => ({ ...item, mealId: resolved.get(item.mealId)?.id || item.mealId }));
+      const slots = Object.fromEntries(Object.entries(planPreview.slots).map(([key, id]) => [key, resolved.get(id)?.id || id]));
+      const resolvedPreview = { ...planPreview, slots, additions };
+      await saveSmartPlanForUser(user, plan, additions);
+      setMeals((current) => [...persistedMeals, ...current.filter((item) => !selectedIds.includes(item.id) && !persistedMeals.some((saved) => saved.id === item.id))]);
+      setPlan({ ...resolvedPreview, additions: undefined }); setPlanPreview(null);
+    }
     catch (err) { setError(err.message || 'Could not save the smart plan.'); }
     finally { setAutoPlanning(false); }
   }
