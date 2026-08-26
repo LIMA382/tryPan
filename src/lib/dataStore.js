@@ -16,6 +16,7 @@ import {
 } from './localStore';
 import { getMonday } from './date';
 import { canonicalIngredientName, ingredientAliasesForName, ingredientIdentityKey, ingredientMatchesQuery, ingredientMatchRank, ingredientNamesMatch, normalizedAliases } from './ingredientIdentity.mjs';
+import { compatibleUnitKey, fromBaseQuantity, normalizeUnit, toBaseQuantity, unitInfo } from './unitConversion.mjs';
 
 export { buildGroceryList };
 
@@ -49,43 +50,6 @@ function savePersonalCatalog(item) {
   return item;
 }
 
-function cleanUnit(unit) {
-  return String(unit || '').trim().toLowerCase();
-}
-
-function unitInfo(unit) {
-  const u = cleanUnit(unit);
-
-  if (u === 'kg') return { group: 'mass', base: 'g', factor: 1000 };
-  if (u === 'g' || u === 'gram' || u === 'grams') return { group: 'mass', base: 'g', factor: 1 };
-
-  if (u === 'l' || u === 'liter' || u === 'liters' || u === 'litre' || u === 'litres') return { group: 'volume', base: 'ml', factor: 1000 };
-  if (u === 'ml') return { group: 'volume', base: 'ml', factor: 1 };
-
-  const countUnits = {
-    unit: 'unit', units: 'unit', piece: 'unit', pieces: 'unit', pc: 'unit', pcs: 'unit',
-    can: 'can', cans: 'can', jar: 'jar', jars: 'jar', bottle: 'bottle', bottles: 'bottle',
-    head: 'head', heads: 'head', bunch: 'bunch', bunches: 'bunch', loaf: 'loaf', loaves: 'loaf',
-    slice: 'slice', slices: 'slice', clove: 'clove', cloves: 'clove', egg: 'egg', eggs: 'egg',
-    tbsp: 'tbsp', tsp: 'tsp', serving: 'serving', servings: 'serving', pack: 'pack', packs: 'pack',
-  };
-
-  if (countUnits[u]) return { group: countUnits[u], base: countUnits[u], factor: 1 };
-
-  return { group: u || 'unit', base: u || 'unit', factor: 1 };
-}
-
-function toBaseQuantity(quantity, unit) {
-  const info = unitInfo(unit);
-  return Number(quantity || 0) * info.factor;
-}
-
-function fromBaseQuantity(quantity, unit) {
-  const info = unitInfo(unit);
-  const value = Number(quantity || 0) / info.factor;
-  return Math.round(value * 100) / 100;
-}
-
 function roundMoney(value) {
   return Math.round(Number(value || 0) * 100) / 100;
 }
@@ -107,8 +71,8 @@ export function calculateIngredientCost(ingredient) {
     return roundMoney((quantityBase / priceUnitBase) * price);
   }
 
-  const cleanUnitName = cleanUnit(unit);
-  const cleanPriceUnit = cleanUnit(priceUnit);
+  const cleanUnitName = normalizeUnit(unit);
+  const cleanPriceUnit = normalizeUnit(priceUnit);
   if (cleanUnitName && cleanPriceUnit && cleanUnitName === cleanPriceUnit) {
     return roundMoney(quantity * price);
   }
@@ -123,23 +87,21 @@ export function calculateMealPrice(ingredients = []) {
   );
 }
 
-function compatibleUnitKey(unit) {
-  const info = unitInfo(unit);
-  return `${info.group}:${info.base}`;
-}
-
 function buildNeededItems(meals, plan) {
   const byId = new Map(meals.map((meal) => [meal.id, meal]));
   const totals = new Map();
 
-  Object.values(plan?.slots || {}).forEach((id) => {
+  Object.entries(plan?.slots || {}).forEach(([slotKey, id]) => {
     const meal = byId.get(id);
     if (!meal) return;
+    const plannedServings = Math.max(1, Number(plan?.servings?.[slotKey] || 1));
+    const recipeServings = Math.max(1, Number(meal.servings || 1));
+    const scale = plannedServings / recipeServings;
 
     (meal.ingredients || []).forEach((ing) => {
       const identity = ingredientIdentityKey(ing);
       const unitKey = compatibleUnitKey(ing.unit);
-      const key = `${identity}|${unitKey}|${ing.category || 'Other'}|${ing.unit || ''}`;
+      const key = `${identity}|${unitKey}`;
       const prev = totals.get(key) || {
         ingredient_id: validUuidOrNull(ing.ingredient_id),
         name: ing.name,
@@ -152,8 +114,8 @@ function buildNeededItems(meals, plan) {
         meals: new Set(),
       };
 
-      prev.quantity += Number(ing.quantity || 0);
-      prev.quantityBase += toBaseQuantity(ing.quantity, ing.unit);
+      prev.quantityBase += toBaseQuantity(Number(ing.quantity || 0) * scale, ing.unit);
+      prev.quantity = fromBaseQuantity(prev.quantityBase, prev.unit);
       if (!prev.estimated_price && ing.estimated_price) prev.estimated_price = Number(ing.estimated_price || 0);
       if (!prev.price_unit && ing.price_unit) prev.price_unit = ing.price_unit || '';
       prev.meals.add(meal.title);
@@ -717,13 +679,19 @@ export async function loadPlanForUser(user, weekStartDate = getMonday()) {
     const plan = emptyPlan();
     plan.id = planRow.id;
     plan.week_start_date = planRow.week_start_date;
-    for (const row of planned || []) plan.slots[`${row.day_of_week}-${row.slot}`] = row.meal_id;
+    for (const row of planned || []) {
+      const key = `${row.day_of_week}-${row.slot}`;
+      plan.slots[key] = row.meal_id;
+      plan.servings[key] = Math.max(1, Number(row.servings || 1));
+    }
     return plan;
   });
 }
 
-export async function setPlannedMealForUser(user, plan, day, slot, mealId) {
-  if (isDemo()) return localSetPlannedMeal(day, slot, mealId);
+export async function setPlannedMealForUser(user, plan, day, slot, mealId, servingCount = null) {
+  const key = `${day}-${slot}`;
+  const servings = Math.max(1, Number(servingCount || plan?.servings?.[key] || 1));
+  if (isDemo()) return localSetPlannedMeal(day, slot, mealId, servings);
   clearCachedPrefix(`plan:${user.id}:`);
 
   const planId = plan?.id || (await getOrCreateWeekPlan(user, plan?.week_start_date || getMonday())).id;
@@ -742,7 +710,7 @@ export async function setPlannedMealForUser(user, plan, day, slot, mealId) {
       await supabase
         .from('planned_meals')
         .upsert(
-          { weekly_plan_id: planId, meal_id: mealId, day_of_week: day, slot, servings: 1 },
+          { weekly_plan_id: planId, meal_id: mealId, day_of_week: day, slot, servings },
           { onConflict: 'weekly_plan_id,day_of_week,slot' }
         )
     );
@@ -753,8 +721,9 @@ export async function setPlannedMealForUser(user, plan, day, slot, mealId) {
     id: planId,
     slots: {
       ...(plan?.slots || emptyPlan().slots),
-      [`${day}-${slot}`]: mealId || null,
+      [key]: mealId || null,
     },
+    servings: { ...(plan?.servings || {}), [key]: mealId ? servings : undefined },
   };
 }
 

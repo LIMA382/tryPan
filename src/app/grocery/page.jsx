@@ -66,7 +66,12 @@ function GroceryContent({ user }) {
     return Object.values(plan.slots || {}).map((id) => byId.get(id)).filter(Boolean);
   }, [meals, plan]);
 
-  const weekTotal = plannedMeals.reduce((sum, meal) => sum + Number(meal.price || 0), 0);
+  const byId = new Map(meals.map((meal) => [meal.id, meal]));
+  const weekTotal = Object.entries(plan?.slots || {}).reduce((sum, [key, id]) => {
+    const meal = byId.get(id);
+    if (!meal) return sum;
+    return sum + (Number(meal.price || 0) / Math.max(1, Number(meal.servings || 1))) * Math.max(1, Number(plan?.servings?.[key] || 1));
+  }, 0);
   const missingEstimate = missingList.reduce((sum, item) => sum + Number(item.missing_cost || 0), 0);
   const plannedIngredientEstimate = pantryAwareList.reduce((sum, item) => sum + Number(item.needed_cost || 0), 0);
   const coveredCount = pantryAwareList.filter((item) => item.has_enough).length;

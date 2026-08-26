@@ -69,8 +69,12 @@ function PlannerContent({ user }) {
   const coveredItems = pantryAwareGrocery.filter((item) => item.has_enough).length;
 
   const weekTotal = useMemo(
-    () => plannedMeals.reduce((sum, meal) => sum + Number(meal.price || 0), 0),
-    [plannedMeals]
+    () => Object.entries(plan?.slots || {}).reduce((sum, [key, id]) => {
+      const meal = byId.get(id);
+      if (!meal) return sum;
+      return sum + (Number(meal.price || 0) / Math.max(1, Number(meal.servings || 1))) * Math.max(1, Number(plan?.servings?.[key] || 1));
+    }, 0),
+    [plan, byId]
   );
 
   const visibleMeals = useMemo(() => {
@@ -133,6 +137,14 @@ function PlannerContent({ user }) {
 
   async function clearSlot(day, slot) {
     await setSlot(day, slot, null);
+  }
+
+  async function changeServings(day, slot, change) {
+    const key = `${day}-${slot}`;
+    const mealId = plan.slots[key];
+    if (!mealId) return;
+    const current = Math.max(1, Number(plan.servings?.[key] || 1));
+    await setPlan(await setPlannedMealForUser(user, plan, day, slot, mealId, Math.max(1, Math.min(12, current + change))));
   }
 
   async function autoPlanWeek() {
@@ -345,6 +357,11 @@ function PlannerContent({ user }) {
                                 <div>
                                   <strong>{meal.title}</strong>
                                   <small>{meal.prep_time} min · {price(meal.price)}</small>
+                                  <div className="serving-stepper" aria-label={`Servings for ${meal.title}`}>
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, -1); }}>−</button>
+                                    <span>{plan.servings?.[key] || 1} {(plan.servings?.[key] || 1) === 1 ? 'serving' : 'servings'}</span>
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, 1); }}>+</button>
+                                  </div>
                                 </div>
                                 <button
                                   type="button"
@@ -427,6 +444,11 @@ function PlannerContent({ user }) {
                                 <div>
                                   <strong>{meal.title}</strong>
                                   <small>{meal.prep_time} min · {price(meal.price)}</small>
+                                  <div className="serving-stepper compact" aria-label={`Servings for ${meal.title}`}>
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, -1); }}>−</button>
+                                    <span>{plan.servings?.[key] || 1}</span>
+                                    <button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, 1); }}>+</button>
+                                  </div>
                                 </div>
 
                                 <button

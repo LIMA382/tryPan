@@ -29,19 +29,24 @@ export function copyPublicMeal(meal) {
 export function getPlan() {
   if (typeof window === 'undefined') return emptyPlan();
   const raw = localStorage.getItem(PLAN_KEY);
-  return raw ? JSON.parse(raw) : emptyPlan();
+  const stored = raw ? JSON.parse(raw) : emptyPlan();
+  return { ...emptyPlan(), ...stored, slots: { ...emptyPlan().slots, ...(stored.slots || {}) }, servings: stored.servings || {} };
 }
 export function savePlan(plan) { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); }
 export function emptyPlan() {
   const slots = {};
   DAYS.forEach(d => SLOTS.forEach(s => { slots[`${d}-${s}`] = null; }));
-  return { week_start_date: getMonday(), slots };
+  return { week_start_date: getMonday(), slots, servings: {} };
 }
-export function setPlannedMeal(day, slot, mealId) {
+export function setPlannedMeal(day, slot, mealId, servingCount = 1) {
   const plan = getPlan();
-  const slots = { ...plan.slots, [`${day}-${slot}`]: mealId };
-  savePlan({ ...plan, slots });
-  return { ...plan, slots };
+  const key = `${day}-${slot}`;
+  const slots = { ...plan.slots, [key]: mealId };
+  const servings = { ...(plan.servings || {}) };
+  if (mealId) servings[key] = Math.max(1, Number(servingCount || servings[key] || 1));
+  else delete servings[key];
+  savePlan({ ...plan, slots, servings });
+  return { ...plan, slots, servings };
 }
 export function buildGroceryList(meals, plan) {
   const byId = new Map(meals.map(m => [m.id, m]));
