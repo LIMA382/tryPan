@@ -7,14 +7,20 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#E5DECA",
-  "theme_color": "#963F2E",
+  "background_color": "#f7faf8",
+  "theme_color": "#31d66b",
   "categories": [
     "food",
     "lifestyle",
     "productivity"
   ],
   "icons": [
+    {
+      "src": "/brand/trypan-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",

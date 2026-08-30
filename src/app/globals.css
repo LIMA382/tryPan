@@ -582,6 +582,16 @@ textarea { min-height: 88px; resize: vertical; }
 .tray-meal small { display: block; margin-top: .2rem; color: var(--muted); font-size: .72rem; }
 
 .mobile-slot-meals { display: grid; gap: 9px; min-width: 0; }
+.mobile-photo-meal { min-height: 116px; padding: 14px !important; align-items: flex-end !important; border: 0 !important; border-radius: 18px; background-position: center; background-size: cover; box-shadow: 0 12px 30px rgba(24,28,25,.18); }
+.mobile-photo-meal > div { align-self: flex-end; }
+.mobile-photo-meal a { color: #f7faf8; text-decoration: none; }
+.mobile-photo-meal strong, .mobile-photo-meal small { color: #f7faf8 !important; text-shadow: 0 1px 5px rgba(24,28,25,.7); }
+.mobile-photo-meal .serving-stepper { background: rgba(247,250,248,.9); color: #181c19; }
+.mobile-move-meal { width: auto; max-width: 150px; margin-top: 7px; padding: 7px 28px 7px 10px; border: 1px solid rgba(247,250,248,.55); border-radius: 999px; background: rgba(247,250,248,.92); color: #181c19; font-size: 11px; font-weight: 800; }
+.mobile-photo-meal .mini-btn { align-self: flex-start; background: rgba(247,250,248,.92); color: #181c19; }
+.mobile-day-total { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 14px 16px; border-radius: 18px; background: rgba(49,214,107,.14); }
+.mobile-day-total span { color: var(--muted); font-size: 12px; font-weight: 800; }
+.mobile-day-total strong { color: var(--ink); font-size: 18px; }
 .mobile-slot-card.multi-meal { align-items: start; }
 .mobile-slot-card.multi-meal .mobile-slot-meal { padding-bottom: 8px; border-bottom: 1px solid color-mix(in srgb,var(--ink) 10%,transparent); }
 .mobile-add-another { padding: 7px 0; color: var(--muted); font-size: 11px; font-weight: 800; }

@@ -173,22 +173,16 @@ function PlannerContent({ user }) {
     } catch (err) { setError(err.message || 'Could not add this meal to the timetable.'); }
   }
 
-  async function drop(day, slot, event) {
-    event.preventDefault();
-    const raw = event.dataTransfer.getData('application/trypan-meal');
-    let source = null;
-    try { source = raw ? JSON.parse(raw) : null; } catch (_) { source = null; }
-    const id = source?.mealId || event.dataTransfer.getData('mealId');
-    if (!id) return;
-    const targetKey = `${day}-${slot}`;
-    const sourceKey = source?.day && source?.slot ? `${source.day}-${source.slot}` : null;
+  async function movePlannedMeal(sourceDay, sourceSlot, targetDay, targetSlot, id) {
+    const sourceKey = sourceDay && sourceSlot ? `${sourceDay}-${sourceSlot}` : null;
+    const targetKey = `${targetDay}-${targetSlot}`;
     if (sourceKey === targetKey) return setOver(null);
 
     try {
       const sourceServings = sourceKey ? Math.max(1, Number(plan?.servings?.[`${sourceKey}:${id}`] || 1)) : null;
-      let nextPlan = await setPlannedMealForUser(user, plan, day, slot, id, sourceServings, { mode: 'add' });
+      let nextPlan = await setPlannedMealForUser(user, plan, targetDay, targetSlot, id, sourceServings, { mode: 'add' });
       if (sourceKey) {
-        nextPlan = await setPlannedMealForUser(user, nextPlan, source.day, source.slot, null, null, { mode: 'remove', removeMealId: id });
+        nextPlan = await setPlannedMealForUser(user, nextPlan, sourceDay, sourceSlot, null, null, { mode: 'remove', removeMealId: id });
       }
       setPlan(nextPlan);
     } catch (err) {
@@ -196,6 +190,16 @@ function PlannerContent({ user }) {
     } finally {
       setOver(null);
     }
+  }
+
+  async function drop(day, slot, event) {
+    event.preventDefault();
+    const raw = event.dataTransfer.getData('application/trypan-meal');
+    let source = null;
+    try { source = raw ? JSON.parse(raw) : null; } catch (_) { source = null; }
+    const id = source?.mealId || event.dataTransfer.getData('mealId');
+    if (!id) return;
+    await movePlannedMeal(source?.day, source?.slot, day, slot, id);
   }
 
   async function placeSelectedMeal(day, slot) {
@@ -422,7 +426,24 @@ function PlannerContent({ user }) {
                             <span className="mobile-slot-name">{slot}</span>
 
                             {slotMeals.length ? (
-                              <div className="mobile-slot-meals">{slotMeals.map((meal) => { const count = plan.servings?.[`${key}:${meal.id}`] || plan.servings?.[key] || 1; return <div className="mobile-slot-meal" key={meal.id}><div><strong>{meal.title}</strong><small>{meal.prep_time} min · {price(servingPrice(meal, count))} for {count} {Number(count) === 1 ? 'portion' : 'portions'}</small><div className="serving-stepper"><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div></div><button type="button" className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button></div>; })}<div className="mobile-add-another">＋ Tap to add selected meal</div></div>
+                              <div className="mobile-slot-meals">
+                                {slotMeals.map((meal) => {
+                                  const count = plan.servings?.[`${key}:${meal.id}`] || plan.servings?.[key] || 1;
+                                  return <div className="mobile-slot-meal mobile-photo-meal" style={{ backgroundImage: `linear-gradient(90deg, rgba(24,28,25,.9), rgba(24,28,25,.42)), url("${recipeImageForMeal(meal)}")` }} key={meal.id}>
+                                    <div>
+                                      <a href={`/recipes/${recipeSlug(meal.title)}`} onClick={(event) => event.stopPropagation()}><strong>{meal.title}</strong></a>
+                                      <small>{meal.prep_time} min · {price(servingPrice(meal, count))} for {count} {Number(count) === 1 ? 'portion' : 'portions'}</small>
+                                      <div className="serving-stepper"><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div>
+                                      <select className="mobile-move-meal" aria-label={`Move ${meal.title}`} defaultValue="" onClick={(event) => event.stopPropagation()} onChange={(event) => { const [targetDay, targetSlot] = event.target.value.split('|'); if (targetDay && targetSlot) movePlannedMeal(day, slot, targetDay, targetSlot, meal.id); event.target.value = ''; }}>
+                                        <option value="" disabled>Move to…</option>
+                                        {DAYS.flatMap((targetDay) => SLOTS.map((targetSlot) => <option key={`${targetDay}-${targetSlot}`} value={`${targetDay}|${targetSlot}`} disabled={targetDay === day && targetSlot === slot}>{targetDay.slice(0, 3)} · {targetSlot}</option>))}
+                                      </select>
+                                    </div>
+                                    <button type="button" className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button>
+                                  </div>;
+                                })}
+                                <div className="mobile-add-another">＋ Tap to add selected meal</div>
+                              </div>
                             ) : (
                               <div className="mobile-empty-slot">
                                 {selectedMeal ? `Add ${selectedMeal.title}` : 'Choose a meal first'}
@@ -432,6 +453,7 @@ function PlannerContent({ user }) {
                         );
                       })}
                     </div>
+                    <footer className="mobile-day-total"><span>{day} total</span><strong>{price(dayTotals[day])}</strong></footer>
                   </article>
                 );
               })()}
