@@ -54,7 +54,7 @@ create table if not exists public.planned_meals (
   slot text not null check (slot in ('Lunch','Dinner')),
   servings integer default 1,
   created_at timestamptz default now(),
-  unique(weekly_plan_id, day_of_week, slot)
+  unique(weekly_plan_id, day_of_week, slot, meal_id)
 );
 
 create table if not exists public.saved_public_meals (

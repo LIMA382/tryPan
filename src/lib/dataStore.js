@@ -104,10 +104,11 @@ function buildNeededItems(meals, plan) {
   const byId = new Map(meals.map((meal) => [meal.id, meal]));
   const totals = new Map();
 
-  Object.entries(plan?.slots || {}).forEach(([slotKey, id]) => {
+  Object.entries(plan?.slots || {}).forEach(([slotKey, ids]) => {
+    (Array.isArray(ids) ? ids : (ids ? [ids] : [])).forEach((id) => {
     const meal = byId.get(id);
     if (!meal) return;
-    const plannedServings = Math.max(1, Number(plan?.servings?.[slotKey] || 1));
+    const plannedServings = Math.max(1, Number(plan?.servings?.[`${slotKey}:${id}`] || plan?.servings?.[slotKey] || 1));
     const recipeServings = Math.max(1, Number(meal.servings || 1));
     const scale = plannedServings / recipeServings;
 
@@ -133,6 +134,7 @@ function buildNeededItems(meals, plan) {
       if (!prev.price_unit && ing.price_unit) prev.price_unit = ing.price_unit || '';
       prev.meals.add(meal.title);
       totals.set(key, prev);
+    });
     });
   });
 
@@ -715,8 +717,8 @@ export async function loadPlanForUser(user, weekStartDate = getMonday()) {
     plan.week_start_date = planRow.week_start_date;
     for (const row of planned || []) {
       const key = `${row.day_of_week}-${row.slot}`;
-      plan.slots[key] = row.meal_id;
-      plan.servings[key] = Math.max(1, Number(row.servings || 1));
+      plan.slots[key] = [...(Array.isArray(plan.slots[key]) ? plan.slots[key] : []), row.meal_id];
+      plan.servings[`${key}:${row.meal_id}`] = Math.max(1, Number(row.servings || 1));
     }
     return plan;
     });
@@ -739,17 +741,24 @@ export async function ensureMealForPlanning(user, meal) {
   return saveMealForUser(user, { ...meal, id: undefined, user_id: user.id, is_public: false });
 }
 
-export async function setPlannedMealForUser(user, plan, day, slot, mealId, servingCount = null) {
+export async function setPlannedMealForUser(user, plan, day, slot, mealId, servingCount = null, options = {}) {
   const key = `${day}-${slot}`;
-  const servings = Math.max(1, Number(servingCount || plan?.servings?.[key] || 1));
+  const mode = options.mode || 'replace';
+  const removeMealId = options.removeMealId || null;
+  const currentIds = Array.isArray(plan?.slots?.[key]) ? plan.slots[key] : (plan?.slots?.[key] ? [plan.slots[key]] : []);
+  const servings = Math.max(1, Number(servingCount || plan?.servings?.[`${key}:${mealId}`] || plan?.servings?.[key] || 1));
   if (isDemo()) return localSetPlannedMeal(day, slot, mealId, servings);
   if (mealId && !isDatabaseMealId(mealId)) throw new Error('This built-in recipe must be saved before it can be planned.');
   clearCachedPrefix(`plan:${user.id}:`);
 
+  const nextIds = mode === 'add' ? [...new Set([...currentIds, mealId])] : mode === 'remove' ? currentIds.filter((id) => id !== removeMealId) : (mealId ? [mealId] : []);
+  const nextServings = { ...(plan?.servings || {}) };
+  if (mealId) nextServings[`${key}:${mealId}`] = servings;
+  if (removeMealId) delete nextServings[`${key}:${removeMealId}`];
   const optimistic = {
     ...plan,
-    slots: { ...(plan?.slots || emptyPlan().slots), [key]: mealId || null },
-    servings: { ...(plan?.servings || {}), [key]: mealId ? servings : undefined },
+    slots: { ...(plan?.slots || emptyPlan().slots), [key]: nextIds },
+    servings: nextServings,
   };
   if (isOffline()) {
     writeSnapshot(user.id, `plan-${plan?.week_start_date || getMonday()}`, optimistic);
@@ -760,7 +769,9 @@ export async function setPlannedMealForUser(user, plan, day, slot, mealId, servi
 
   const planId = plan?.id || (await getOrCreateWeekPlan(user, plan?.week_start_date || getMonday())).id;
 
-  if (!mealId) {
+  if (mode === 'remove' && removeMealId) {
+    await throwIfError(await supabase.from('planned_meals').delete().eq('weekly_plan_id', planId).eq('day_of_week', day).eq('slot', slot).eq('meal_id', removeMealId));
+  } else if (!mealId) {
     await throwIfError(
       await supabase
         .from('planned_meals')
@@ -770,12 +781,13 @@ export async function setPlannedMealForUser(user, plan, day, slot, mealId, servi
         .eq('slot', slot)
     );
   } else {
+    if (mode === 'replace') await throwIfError(await supabase.from('planned_meals').delete().eq('weekly_plan_id', planId).eq('day_of_week', day).eq('slot', slot));
     await throwIfError(
       await supabase
         .from('planned_meals')
         .upsert(
           { weekly_plan_id: planId, meal_id: mealId, day_of_week: day, slot, servings },
-          { onConflict: 'weekly_plan_id,day_of_week,slot' }
+          { onConflict: 'weekly_plan_id,day_of_week,slot,meal_id' }
         )
     );
   }
@@ -835,7 +847,7 @@ export function buildPantryRecap(trips = [], pantryItems = [], meals = [], plan 
 
   const byId = new Map((meals || []).map((meal) => [meal.id, meal]));
   const mealCounts = new Map();
-  Object.values(plan?.slots || {}).forEach((mealId) => {
+  Object.values(plan?.slots || {}).flatMap((mealId) => Array.isArray(mealId) ? mealId : (mealId ? [mealId] : [])).forEach((mealId) => {
     const meal = byId.get(mealId);
     if (!meal) return;
     mealCounts.set(meal.title, (mealCounts.get(meal.title) || 0) + 1);
@@ -901,7 +913,7 @@ export async function saveSmartPlanForUser(user, plan, additions = []) {
   const planId = plan?.id || (await getOrCreateWeekPlan(user, plan?.week_start_date || getMonday())).id;
   await throwIfError(await supabase.from('planned_meals').upsert(additions.map((item) => ({
     weekly_plan_id: planId, meal_id: item.mealId, day_of_week: item.day, slot: item.slot, servings: item.servings,
-  })), { onConflict: 'weekly_plan_id,day_of_week,slot' }));
+  })), { onConflict: 'weekly_plan_id,day_of_week,slot,meal_id' }));
   return { ...plan, id: planId };
 }
 
@@ -1081,7 +1093,7 @@ export async function syncOfflineChanges() {
     try {
       if (mutation.type === 'plan-slot') {
         const planRow = await getOrCreateWeekPlan(user, mutation.weekStartDate);
-        if (mutation.mealId) await throwIfError(await supabase.from('planned_meals').upsert({ weekly_plan_id: planRow.id, meal_id: mutation.mealId, day_of_week: mutation.day, slot: mutation.slot, servings: mutation.servings }, { onConflict: 'weekly_plan_id,day_of_week,slot' }));
+        if (mutation.mealId) await throwIfError(await supabase.from('planned_meals').upsert({ weekly_plan_id: planRow.id, meal_id: mutation.mealId, day_of_week: mutation.day, slot: mutation.slot, servings: mutation.servings }, { onConflict: 'weekly_plan_id,day_of_week,slot,meal_id' }));
         else await throwIfError(await supabase.from('planned_meals').delete().eq('weekly_plan_id', planRow.id).eq('day_of_week', mutation.day).eq('slot', mutation.slot));
       } else if (mutation.type === 'pantry-upsert') {
         const { id, ...payload } = mutation.payload;

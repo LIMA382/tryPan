@@ -35,7 +35,7 @@ function StudentContent({ user }) {
 
   const summary = useMemo(() => {
     const byId = new Map(data.meals.map((meal) => [meal.id, meal]));
-    const planned = Object.values(data.plan?.slots || {}).map((id) => byId.get(id)).filter(Boolean);
+    const planned = Object.values(data.plan?.slots || {}).flatMap((ids) => Array.isArray(ids) ? ids : (ids ? [ids] : [])).map((id) => byId.get(id)).filter(Boolean);
     const planCost = plannedMealCost(data.meals, data.plan);
     const grocery = buildPantryAwareGroceryList(data.meals, data.plan, data.pantry);
     const missingCost = grocery.reduce((sum, item) => sum + Number(item.missing_cost || 0), 0);

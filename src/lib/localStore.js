@@ -35,23 +35,24 @@ export function getPlan() {
 export function savePlan(plan) { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); }
 export function emptyPlan() {
   const slots = {};
-  DAYS.forEach(d => SLOTS.forEach(s => { slots[`${d}-${s}`] = null; }));
+  DAYS.forEach(d => SLOTS.forEach(s => { slots[`${d}-${s}`] = []; }));
   return { week_start_date: getMonday(), slots, servings: {} };
 }
 export function setPlannedMeal(day, slot, mealId, servingCount = 1) {
   const plan = getPlan();
   const key = `${day}-${slot}`;
-  const slots = { ...plan.slots, [key]: mealId };
+  const current = Array.isArray(plan.slots[key]) ? plan.slots[key] : (plan.slots[key] ? [plan.slots[key]] : []);
+  const slots = { ...plan.slots, [key]: mealId ? [...new Set([...current, mealId])] : [] };
   const servings = { ...(plan.servings || {}) };
-  if (mealId) servings[key] = Math.max(1, Number(servingCount || servings[key] || 1));
-  else delete servings[key];
+  if (mealId) servings[`${key}:${mealId}`] = Math.max(1, Number(servingCount || servings[`${key}:${mealId}`] || 1));
+  else Object.keys(servings).filter((item) => item === key || item.startsWith(`${key}:`)).forEach((item) => delete servings[item]);
   savePlan({ ...plan, slots, servings });
   return { ...plan, slots, servings };
 }
 export function buildGroceryList(meals, plan) {
   const byId = new Map(meals.map(m => [m.id, m]));
   const totals = new Map();
-  Object.values(plan.slots || {}).forEach(id => {
+  Object.values(plan.slots || {}).flatMap(id => Array.isArray(id) ? id : (id ? [id] : [])).forEach(id => {
     const meal = byId.get(id); if (!meal) return;
     (meal.ingredients || []).forEach(ing => {
       const key = `${ing.category || 'Other'}|${ing.name.toLowerCase()}|${ing.unit || ''}`;

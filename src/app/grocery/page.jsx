@@ -64,7 +64,7 @@ function GroceryContent({ user }) {
   const plannedMeals = useMemo(() => {
     if (!plan) return [];
     const byId = new Map(meals.map((meal) => [meal.id, meal]));
-    return Object.values(plan.slots || {}).map((id) => byId.get(id)).filter(Boolean);
+    return Object.values(plan.slots || {}).flatMap((ids) => Array.isArray(ids) ? ids : (ids ? [ids] : [])).map((id) => byId.get(id)).filter(Boolean);
   }, [meals, plan]);
 
   const weekTotal = plannedMealCost(meals, plan);

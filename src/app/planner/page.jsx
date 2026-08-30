@@ -15,6 +15,11 @@ function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
 }
 
+const slotMealIds = (plan, key) => {
+  const value = plan?.slots?.[key];
+  return Array.isArray(value) ? value : (value ? [value] : []);
+};
+
 function PlannerContent({ user }) {
   const searchParams = useSearchParams();
   const mealTrayRef = useRef(null);
@@ -65,7 +70,7 @@ function PlannerContent({ user }) {
 
   const plannedMeals = useMemo(() => {
     if (!plan) return [];
-    return Object.values(plan.slots || []).map((id) => byId.get(id)).filter(Boolean);
+    return Object.values(plan.slots || []).flatMap((ids) => Array.isArray(ids) ? ids : (ids ? [ids] : [])).map((id) => byId.get(id)).filter(Boolean);
   }, [plan, byId]);
 
   const pantryAwareGrocery = useMemo(() => (plan ? buildPantryAwareGroceryList(meals, plan, pantryItems) : []), [meals, plan, pantryItems]);
@@ -115,7 +120,7 @@ function PlannerContent({ user }) {
     setMobileDayIndex((new Date().getDay() + 6) % 7);
   }
 
-  async function setSlot(day, slot, mealId) {
+  async function setSlot(day, slot, mealId, mode = 'replace') {
     setError('');
     try {
       let resolvedId = mealId;
@@ -128,7 +133,7 @@ function PlannerContent({ user }) {
           setSelectedMealId(resolvedId);
         }
       }
-      setPlan(await setPlannedMealForUser(user, plan, day, slot, resolvedId));
+      setPlan(await setPlannedMealForUser(user, plan, day, slot, resolvedId, null, { mode }));
     } catch (err) { setError(err.message || 'Could not add this meal to the timetable.'); }
   }
 
@@ -136,25 +141,28 @@ function PlannerContent({ user }) {
     event.preventDefault();
     const id = event.dataTransfer.getData('mealId');
     if (!id) return;
-    await setSlot(day, slot, id);
+    await setSlot(day, slot, id, 'add');
     setOver(null);
   }
 
   async function placeSelectedMeal(day, slot) {
     if (!selectedMealId) return;
-    await setSlot(day, slot, selectedMealId);
+    await setSlot(day, slot, selectedMealId, 'add');
   }
 
   async function clearSlot(day, slot) {
     await setSlot(day, slot, null);
   }
 
-  async function changeServings(day, slot, change) {
+  async function removeSlotMeal(day, slot, mealId) {
+    setPlan(await setPlannedMealForUser(user, plan, day, slot, null, null, { mode: 'remove', removeMealId: mealId }));
+  }
+
+  async function changeServings(day, slot, mealId, change) {
     const key = `${day}-${slot}`;
-    const mealId = plan.slots[key];
     if (!mealId) return;
-    const current = Math.max(1, Number(plan.servings?.[key] || 1));
-    await setPlan(await setPlannedMealForUser(user, plan, day, slot, mealId, Math.max(1, Math.min(12, current + change))));
+    const current = Math.max(1, Number(plan.servings?.[`${key}:${mealId}`] || plan.servings?.[key] || 1));
+    await setPlan(await setPlannedMealForUser(user, plan, day, slot, mealId, Math.max(1, Math.min(12, current + change)), { mode: 'add' }));
   }
 
   async function autoPlanWeek() {
@@ -309,7 +317,7 @@ function PlannerContent({ user }) {
             <div className="mobile-day-tabs" role="tablist" aria-label="Choose day">
               {DAYS.map((day, index) => {
                 const dateLabel = new Date(`${addDays(weekStartDate, index)}T00:00:00`).toLocaleDateString(undefined, { day: 'numeric' });
-                const dayMealCount = SLOTS.filter((slot) => byId.get(plan.slots[`${day}-${slot}`])).length;
+                const dayMealCount = SLOTS.reduce((count, slot) => count + slotMealIds(plan, `${day}-${slot}`).length, 0);
 
                 return (
                   <button
@@ -344,44 +352,23 @@ function PlannerContent({ user }) {
                     <div className="mobile-slot-list">
                       {SLOTS.map((slot) => {
                         const key = `${day}-${slot}`;
-                        const meal = byId.get(plan.slots[key]);
+                        const slotMeals = slotMealIds(plan, key).map((id) => byId.get(id)).filter(Boolean);
 
                         return (
                           <div
                             key={key}
-                            className={`mobile-slot-card ${meal ? 'filled' : ''}`}
+                            className={`mobile-slot-card ${slotMeals.length ? 'filled multi-meal' : ''}`}
                             role="button"
                             tabIndex={0}
-                            onClick={() => !meal && placeSelectedMeal(day, slot)}
+                            onClick={() => placeSelectedMeal(day, slot)}
                             onKeyDown={(event) => {
-                              if ((event.key === 'Enter' || event.key === ' ') && !meal) placeSelectedMeal(day, slot);
+                              if (event.key === 'Enter' || event.key === ' ') placeSelectedMeal(day, slot);
                             }}
                           >
                             <span className="mobile-slot-name">{slot}</span>
 
-                            {meal ? (
-                              <div className="mobile-slot-meal">
-                                <div>
-                                  <strong>{meal.title}</strong>
-                                  <small>{meal.prep_time} min · {price(meal.price)}</small>
-                                  <div className="serving-stepper" aria-label={`Servings for ${meal.title}`}>
-                                    <button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, -1); }}>−</button>
-                                    <span>{plan.servings?.[key] || 1} {(plan.servings?.[key] || 1) === 1 ? 'serving' : 'servings'}</span>
-                                    <button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, 1); }}>+</button>
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  className="mini-btn"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    clearSlot(day, slot);
-                                  }}
-                                  aria-label={`Remove ${meal.title} from ${day} ${slot}`}
-                                >
-                                  ×
-                                </button>
-                              </div>
+                            {slotMeals.length ? (
+                              <div className="mobile-slot-meals">{slotMeals.map((meal) => { const count = plan.servings?.[`${key}:${meal.id}`] || plan.servings?.[key] || 1; return <div className="mobile-slot-meal" key={meal.id}><div><strong>{meal.title}</strong><small>{meal.prep_time} min · {price(meal.price)}</small><div className="serving-stepper"><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div></div><button type="button" className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button></div>; })}<div className="mobile-add-another">＋ Tap to add selected meal</div></div>
                             ) : (
                               <div className="mobile-empty-slot">
                                 {selectedMeal ? `Add ${selectedMeal.title}` : 'Choose a meal first'}
@@ -427,46 +414,28 @@ function PlannerContent({ user }) {
 
                     {DAYS.map((day) => {
                       const key = `${day}-${slot}`;
-                      const meal = byId.get(plan.slots[key]);
+                      const slotMeals = slotMealIds(plan, key).map((id) => byId.get(id)).filter(Boolean);
 
                       return (
                         <div
                           key={key}
-                          className={`planner-slot horizontal-slot ${over === key ? 'over' : ''} ${meal ? 'filled' : ''}`}
+                          className={`planner-slot horizontal-slot ${over === key ? 'over' : ''} ${slotMeals.length ? 'filled' : ''}`}
                           onDragOver={(event) => { event.preventDefault(); setOver(key); }}
                           onDragLeave={() => setOver(null)}
                           onDrop={(event) => drop(day, slot, event)}
-                          onClick={() => !meal && placeSelectedMeal(day, slot)}
+                          onClick={() => placeSelectedMeal(day, slot)}
                         >
                           <AnimatePresence mode="wait">
-                            {meal ? (
+                            {slotMeals.length ? (
                               <motion.div
-                                key={meal.id}
+                                key={slotMeals.map((meal) => meal.id).join('-')}
                                 className="planner-slot-meal compact-slot-meal"
                                 initial={{ opacity: 0, y: 8, scale: 0.98 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.96 }}
                                 transition={{ duration: 0.2 }}
                               >
-                                <div>
-                                  <strong>{meal.title}</strong>
-                                  <small>{meal.prep_time} min · {price(meal.price)}</small>
-                                  <div className="serving-stepper compact" aria-label={`Servings for ${meal.title}`}>
-                                    <button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, -1); }}>−</button>
-                                    <span>{plan.servings?.[key] || 1}</span>
-                                    <button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, 1); }}>+</button>
-                                  </div>
-                                </div>
-
-                                <button
-                                  className="mini-btn"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    clearSlot(day, slot);
-                                  }}
-                                >
-                                  ×
-                                </button>
+                                <div>{slotMeals.map((meal) => <div className="compact-slot-line" key={meal.id}><strong>{meal.title}</strong><button className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button></div>)}</div>
                               </motion.div>
                             ) : (
                               <motion.div

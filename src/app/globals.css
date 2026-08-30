@@ -562,6 +562,12 @@ textarea { min-height: 88px; resize: vertical; }
   align-items: stretch;
 }
 
+.mobile-slot-meals { display: grid; gap: 9px; min-width: 0; }
+.mobile-slot-card.multi-meal { align-items: start; }
+.mobile-slot-card.multi-meal .mobile-slot-meal { padding-bottom: 8px; border-bottom: 1px solid color-mix(in srgb,var(--ink) 10%,transparent); }
+.mobile-add-another { padding: 7px 0; color: var(--muted); font-size: 11px; font-weight: 800; }
+.compact-slot-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; }
+
 
 .ingredient-select-button,
 .ingredient-edit-button {

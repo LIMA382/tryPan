@@ -42,7 +42,7 @@ export function buildSmartWeekPlan(meals, pantryItems, plan, settings = {}) {
   const slots = { ...(plan?.slots || {}) };
   const servings = { ...(plan?.servings || {}) };
   const usage = new Map();
-  Object.values(slots).filter(Boolean).forEach((id) => usage.set(id, (usage.get(id) || 0) + 1));
+  Object.values(slots).flatMap((ids) => Array.isArray(ids) ? ids : (ids ? [ids] : [])).forEach((id) => usage.set(id, (usage.get(id) || 0) + 1));
   const additions = [];
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const slotNames = ['Breakfast', 'Lunch', 'Dinner'];
