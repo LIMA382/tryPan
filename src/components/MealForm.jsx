@@ -128,7 +128,12 @@ export default function MealForm({ initialMeal, onSave, onCancel, saving, user, 
       tags: Array.isArray(meal.tags) ? meal.tags : String(meal.tags || '').split(',').map((x) => x.trim()).filter(Boolean),
       ingredients: meal.ingredients
         .filter((ingredient) => ingredient.name.trim())
-        .map((ingredient) => ({ ...ingredient, quantity: Number(ingredient.quantity || 0) })),
+        .map((ingredient) => ({
+          ...ingredient,
+          quantity: Number(ingredient.quantity || 0),
+          estimated_price: Number(ingredient.estimated_price || 0),
+          price_unit: ingredient.price_unit || ingredient.unit || '',
+        })),
     });
   }
 
@@ -243,6 +248,16 @@ export default function MealForm({ initialMeal, onSave, onCancel, saving, user, 
               <select aria-label={`Category for ${ingredient.name || 'ingredient'}`} value={ingredient.category} onChange={(event) => updateIngredient(index, 'category', event.target.value)}>
                 {CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
               </select>
+            </div>
+
+            <div className="field">
+              <label>Price €</label>
+              <input aria-label={`Price for ${ingredient.name || 'ingredient'}`} type="number" min="0" step="0.01" inputMode="decimal" value={ingredient.estimated_price} onChange={(event) => updateIngredient(index, 'estimated_price', event.target.value)} placeholder="0.00" />
+            </div>
+
+            <div className="field">
+              <label>Price per</label>
+              <input aria-label={`Price unit for ${ingredient.name || 'ingredient'}`} value={ingredient.price_unit} onChange={(event) => updateIngredient(index, 'price_unit', event.target.value)} placeholder={ingredient.unit || 'unit'} />
             </div>
 
             <div className="ingredient-cost-pill">

@@ -15,6 +15,10 @@ function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
 }
 
+function servingPrice(meal, servings = 1) {
+  return Number(meal?.price || 0) / Math.max(1, Number(meal?.servings || 1)) * Math.max(1, Number(servings || 1));
+}
+
 const slotMealIds = (plan, key) => {
   const value = plan?.slots?.[key];
   return Array.isArray(value) ? value : (value ? [value] : []);
@@ -78,6 +82,26 @@ function PlannerContent({ user }) {
   const coveredItems = pantryAwareGrocery.filter((item) => item.has_enough).length;
 
   const weekTotal = useMemo(() => plannedMealCost(meals, plan), [meals, plan]);
+
+  const plannedServingsByMeal = useMemo(() => {
+    const totals = new Map();
+    Object.entries(plan?.slots || {}).forEach(([key]) => {
+      slotMealIds(plan, key).forEach((id) => {
+        const count = Math.max(1, Number(plan?.servings?.[`${key}:${id}`] || plan?.servings?.[key] || 1));
+        totals.set(id, (totals.get(id) || 0) + count);
+      });
+    });
+    return totals;
+  }, [plan]);
+
+  function portionStatus(meal) {
+    const batch = Math.max(1, Number(meal?.servings || 1));
+    const used = plannedServingsByMeal.get(meal.id) || 0;
+    if (!used) return `${batch} ${batch === 1 ? 'portion' : 'portions'} per recipe`;
+    const remainder = used % batch;
+    const left = remainder ? batch - remainder : 0;
+    return left ? `${left} ${left === 1 ? 'portion' : 'portions'} left in this batch` : 'Batch fully planned · cook again to add more';
+  }
 
   const visibleMeals = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -259,7 +283,8 @@ function PlannerContent({ user }) {
                   onDragStart={(event) => event.dataTransfer.setData('mealId', meal.id)}
                 >
                   <strong>{meal.title}</strong>
-                  <span>{meal.prep_time} min · {price(meal.price)}</span>
+                  <span>{meal.prep_time} min · {price(servingPrice(meal))} per portion</span>
+                  <small>{portionStatus(meal)}</small>
                 </button>
               ))}
 
@@ -291,7 +316,7 @@ function PlannerContent({ user }) {
                 >
                   <span>Selected</span>
                   <strong>{selectedMeal.title}</strong>
-                  <em>{price(selectedMeal.price)}</em>
+                  <em>{price(servingPrice(selectedMeal))} per portion</em>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -310,7 +335,7 @@ function PlannerContent({ user }) {
               <div className="mobile-selected-meal">
                 <span>Selected meal</span>
                 <strong>{selectedMeal.title}</strong>
-                <em>{price(selectedMeal.price)}</em>
+                <em>{price(servingPrice(selectedMeal))} per portion</em>
               </div>
             )}
 
@@ -368,7 +393,7 @@ function PlannerContent({ user }) {
                             <span className="mobile-slot-name">{slot}</span>
 
                             {slotMeals.length ? (
-                              <div className="mobile-slot-meals">{slotMeals.map((meal) => { const count = plan.servings?.[`${key}:${meal.id}`] || plan.servings?.[key] || 1; return <div className="mobile-slot-meal" key={meal.id}><div><strong>{meal.title}</strong><small>{meal.prep_time} min · {price(meal.price)}</small><div className="serving-stepper"><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div></div><button type="button" className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button></div>; })}<div className="mobile-add-another">＋ Tap to add selected meal</div></div>
+                              <div className="mobile-slot-meals">{slotMeals.map((meal) => { const count = plan.servings?.[`${key}:${meal.id}`] || plan.servings?.[key] || 1; return <div className="mobile-slot-meal" key={meal.id}><div><strong>{meal.title}</strong><small>{meal.prep_time} min · {price(servingPrice(meal, count))} for {count} {Number(count) === 1 ? 'portion' : 'portions'}</small><div className="serving-stepper"><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div></div><button type="button" className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button></div>; })}<div className="mobile-add-another">＋ Tap to add selected meal</div></div>
                             ) : (
                               <div className="mobile-empty-slot">
                                 {selectedMeal ? `Add ${selectedMeal.title}` : 'Choose a meal first'}
