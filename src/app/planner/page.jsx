@@ -28,7 +28,10 @@ const slotMealIds = (plan, key) => {
 function PlannerContent({ user }) {
   const searchParams = useSearchParams();
   const mealTrayRef = useRef(null);
-  const [weekStartDate, setWeekStartDate] = useState(() => getMonday());
+  const [weekStartDate, setWeekStartDate] = useState(() => {
+    const requestedWeek = searchParams.get('week');
+    return /^\d{4}-\d{2}-\d{2}$/.test(requestedWeek || '') ? requestedWeek : getMonday();
+  });
   const [mobileDayIndex, setMobileDayIndex] = useState(() => (new Date().getDay() + 6) % 7);
 
   const [meals, setMeals] = useState([]);

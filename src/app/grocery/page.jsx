@@ -11,12 +11,16 @@ import {
   loadPlanForUser,
 } from '@/lib/dataStore';
 import { plannedMealCost } from '@/lib/planMetrics.mjs';
+import { addWeeks, formatWeekRange, getMonday } from '@/lib/date';
 
 function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
 }
 
 function GroceryContent({ user }) {
+  const [weekStartDate, setWeekStartDate] = useState(() => (
+    new Date().getDay() === 0 ? addWeeks(getMonday(), 1) : getMonday()
+  ));
   const [meals, setMeals] = useState([]);
   const [plan, setPlan] = useState(null);
   const [pantryItems, setPantryItems] = useState([]);
@@ -31,7 +35,7 @@ function GroceryContent({ user }) {
     try {
       const [loadedMeals, loadedPlan, loadedPantry] = await Promise.all([
         loadAllVisibleMeals(user),
-        loadPlanForUser(user),
+        loadPlanForUser(user, weekStartDate),
         loadPantryItemsForUser(user),
       ]);
 
@@ -43,7 +47,7 @@ function GroceryContent({ user }) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, weekStartDate]);
 
   useEffect(() => {
     load();
@@ -94,6 +98,16 @@ function GroceryContent({ user }) {
     >
       {error && <div className="notice error-notice">{error}</div>}
       {loading ? <div className="card skeleton-card" aria-label="Loading grocery list"><div className="skeleton-line wide" /><div className="skeleton-line" /><div className="skeleton-pill-row"><span /><span /><span /></div></div> : null}
+
+      <div className="week-switcher grocery-week-switcher panel-soft">
+        <button type="button" className="soft-btn" onClick={() => setWeekStartDate((current) => addWeeks(current, -1))}>← Previous week</button>
+        <div>
+          <span>Shopping for</span>
+          <strong>{formatWeekRange(weekStartDate)}</strong>
+        </div>
+        <button type="button" className="soft-btn" onClick={() => setWeekStartDate(getMonday())}>This week</button>
+        <button type="button" className="primary-btn" onClick={() => setWeekStartDate(addWeeks(getMonday(), 1))}>Next week →</button>
+      </div>
 
       <div className="grocery-summary panel-soft smart-grocery-summary">
         <div><span>Planned meals</span><strong>{plannedMeals.length}</strong></div>
@@ -150,7 +164,7 @@ function GroceryContent({ user }) {
           </section>
         ))}
 
-        {!loading && !displayList.length && view === 'missing' ? (
+        {!loading && pantryAwareList.length > 0 && !displayList.length && view === 'missing' ? (
           <div className="card empty-state-card">
             <h3>Your pantry covers this plan</h3>
             <p>No missing ingredients found. You can still switch to “All planned ingredients” to see what will be used.</p>
@@ -158,7 +172,7 @@ function GroceryContent({ user }) {
         ) : null}
 
         {!loading && !pantryAwareList.length ? (
-          <div className="card empty-state-card"><h3>Plan meals first</h3><p>Add meals to your weekly planner and tryPan will compare them with your pantry.</p><Link className="primary-btn" href="/plan/week">Open planner</Link></div>
+          <div className="card empty-state-card"><h3>No meals planned for {formatWeekRange(weekStartDate)}</h3><p>Choose another week above or add meals to this week and tryPan will compare them with your pantry.</p><Link className="primary-btn" href={`/plan/week?week=${weekStartDate}`}>Open this week in planner</Link></div>
         ) : null}
       </div>
     </AppFrame>
