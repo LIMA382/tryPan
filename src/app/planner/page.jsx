@@ -10,6 +10,7 @@ import { buildPantryAwareGroceryList, ensureMealForPlanning, loadAllVisibleMeals
 import { buildSmartWeekPlan } from '@/lib/mealRecommendations.mjs';
 import { loadStudentSettings } from '@/lib/studentStore';
 import { plannedMealCost } from '@/lib/planMetrics.mjs';
+import { recipeImageForMeal, recipeSlug } from '@/lib/recipeUtils';
 
 function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
@@ -82,6 +83,14 @@ function PlannerContent({ user }) {
   const coveredItems = pantryAwareGrocery.filter((item) => item.has_enough).length;
 
   const weekTotal = useMemo(() => plannedMealCost(meals, plan), [meals, plan]);
+
+  const dayTotals = useMemo(() => Object.fromEntries(DAYS.map((day) => {
+    const dayPlan = {
+      ...plan,
+      slots: Object.fromEntries(Object.entries(plan?.slots || {}).filter(([key]) => key.startsWith(`${day}-`))),
+    };
+    return [day, plannedMealCost(meals, dayPlan)];
+  })), [meals, plan]);
 
   const plannedServingsByMeal = useMemo(() => {
     const totals = new Map();
@@ -163,10 +172,27 @@ function PlannerContent({ user }) {
 
   async function drop(day, slot, event) {
     event.preventDefault();
-    const id = event.dataTransfer.getData('mealId');
+    const raw = event.dataTransfer.getData('application/trypan-meal');
+    let source = null;
+    try { source = raw ? JSON.parse(raw) : null; } catch (_) { source = null; }
+    const id = source?.mealId || event.dataTransfer.getData('mealId');
     if (!id) return;
-    await setSlot(day, slot, id, 'add');
-    setOver(null);
+    const targetKey = `${day}-${slot}`;
+    const sourceKey = source?.day && source?.slot ? `${source.day}-${source.slot}` : null;
+    if (sourceKey === targetKey) return setOver(null);
+
+    try {
+      const sourceServings = sourceKey ? Math.max(1, Number(plan?.servings?.[`${sourceKey}:${id}`] || 1)) : null;
+      let nextPlan = await setPlannedMealForUser(user, plan, day, slot, id, sourceServings, { mode: 'add' });
+      if (sourceKey) {
+        nextPlan = await setPlannedMealForUser(user, nextPlan, source.day, source.slot, null, null, { mode: 'remove', removeMealId: id });
+      }
+      setPlan(nextPlan);
+    } catch (err) {
+      setError(err.message || 'Could not move this meal.');
+    } finally {
+      setOver(null);
+    }
   }
 
   async function placeSelectedMeal(day, slot) {
@@ -460,7 +486,28 @@ function PlannerContent({ user }) {
                                 exit={{ opacity: 0, scale: 0.96 }}
                                 transition={{ duration: 0.2 }}
                               >
-                                <div>{slotMeals.map((meal) => <div className="compact-slot-line" key={meal.id}><strong>{meal.title}</strong><button className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button></div>)}</div>
+                                <div className="calendar-meal-cards">{slotMeals.map((meal) => {
+                                  const count = plan.servings?.[`${key}:${meal.id}`] || plan.servings?.[key] || 1;
+                                  return <div
+                                    className="calendar-recipe-card"
+                                    key={meal.id}
+                                    draggable
+                                    style={{ backgroundImage: `linear-gradient(180deg, rgba(24,28,25,.12), rgba(24,28,25,.92)), url("${recipeImageForMeal(meal)}")` }}
+                                    onDragStart={(event) => {
+                                      event.stopPropagation();
+                                      const payload = JSON.stringify({ mealId: meal.id, day, slot });
+                                      event.dataTransfer.setData('application/trypan-meal', payload);
+                                      event.dataTransfer.setData('mealId', meal.id);
+                                      event.dataTransfer.effectAllowed = 'move';
+                                    }}
+                                  >
+                                    <a href={`/recipes/${recipeSlug(meal.title)}`} onClick={(event) => event.stopPropagation()}>
+                                      <strong>{meal.title}</strong>
+                                      <small>{count} {Number(count) === 1 ? 'portion' : 'portions'} · {price(servingPrice(meal, count))}</small>
+                                    </a>
+                                    <button className="mini-btn" aria-label={`Remove ${meal.title}`} onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button>
+                                  </div>;
+                                })}</div>
                               </motion.div>
                             ) : (
                               <motion.div
@@ -479,6 +526,9 @@ function PlannerContent({ user }) {
                     })}
                   </div>
                 ))}
+
+                <div className="calendar-total-label">Day total</div>
+                {DAYS.map((day) => <div className="calendar-day-total" key={`${day}-total`}><span>{day.slice(0, 3)}</span><strong>{price(dayTotals[day])}</strong></div>)}
               </div>
             </div>
           </section>
