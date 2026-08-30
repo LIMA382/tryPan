@@ -501,7 +501,7 @@ function PlannerContent({ user }) {
                                       event.dataTransfer.effectAllowed = 'move';
                                     }}
                                   >
-                                    <a href={`/recipes/${recipeSlug(meal.title)}`} onClick={(event) => event.stopPropagation()}>
+                                    <a href={`/recipes/${recipeSlug(meal.title)}`} draggable={false} onDragStart={(event) => event.preventDefault()} onClick={(event) => event.stopPropagation()}>
                                       <strong>{meal.title}</strong>
                                       <small>{count} {Number(count) === 1 ? 'portion' : 'portions'} · {price(servingPrice(meal, count))}</small>
                                     </a>
