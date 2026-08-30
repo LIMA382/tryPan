@@ -505,6 +505,11 @@ function PlannerContent({ user }) {
                                       <strong>{meal.title}</strong>
                                       <small>{count} {Number(count) === 1 ? 'portion' : 'portions'} · {price(servingPrice(meal, count))}</small>
                                     </a>
+                                    <div className="calendar-card-portions" aria-label={`Portions of ${meal.title} planned for ${day} ${slot}`}>
+                                      <button type="button" aria-label={`Use one fewer portion of ${meal.title}`} disabled={Number(count) <= 1} onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button>
+                                      <span>{count}</span>
+                                      <button type="button" aria-label={`Use one more portion of ${meal.title}`} onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button>
+                                    </div>
                                     <button className="mini-btn" aria-label={`Remove ${meal.title}`} onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button>
                                   </div>;
                                 })}</div>
