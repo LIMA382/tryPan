@@ -5,6 +5,7 @@ import Link from 'next/link';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import {
+  addPantryTripForUser,
   buildPantryAwareGroceryList,
   loadAllVisibleMeals,
   loadPantryItemsForUser,
@@ -27,6 +28,8 @@ function GroceryContent({ user }) {
   const [view, setView] = useState('missing');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [buyingItem, setBuyingItem] = useState('');
+  const [message, setMessage] = useState('');
 
   const load = useCallback(async function load() {
     setLoading(true);
@@ -89,6 +92,37 @@ function GroceryContent({ user }) {
     navigator.clipboard?.writeText(text);
   }
 
+  async function markBought(item) {
+    const key = `${item.name}-${item.unit}`;
+    if (item.has_enough || buyingItem) return;
+    setBuyingItem(key);
+    setError('');
+    setMessage('');
+    try {
+      await addPantryTripForUser(user, {
+        store: 'Grocery list',
+        bought_at: new Date().toISOString().slice(0, 10),
+        notes: `Bought for ${formatWeekRange(weekStartDate)}`,
+        items: [{
+          ingredient_id: item.ingredient_id,
+          name: item.name,
+          quantity: Number(item.missing_quantity || 0),
+          unit: item.unit,
+          category: item.category,
+          estimated_price: Number(item.estimated_price || 0),
+          price_unit: item.price_unit || item.unit || '',
+          is_free: false,
+        }],
+      });
+      setMessage(`${item.name} added to your pantry.`);
+      await load();
+    } catch (err) {
+      setError(err.message || `Could not add ${item.name} to your pantry.`);
+    } finally {
+      setBuyingItem('');
+    }
+  }
+
   return (
     <AppFrame
       user={user}
@@ -97,6 +131,7 @@ function GroceryContent({ user }) {
       action={<div className="week-total"><span>Missing estimate</span><strong>{price(missingEstimate)}</strong></div>}
     >
       {error && <div className="notice error-notice">{error}</div>}
+      {message && <div className="notice success-notice" role="status">{message}</div>}
       {loading ? <div className="card skeleton-card" aria-label="Loading grocery list"><div className="skeleton-line wide" /><div className="skeleton-line" /><div className="skeleton-pill-row"><span /><span /><span /></div></div> : null}
 
       <div className="week-switcher grocery-week-switcher panel-soft">
@@ -135,7 +170,16 @@ function GroceryContent({ user }) {
 
             {items.map((item) => (
               <div className={`grocery-item smart-grocery-item ${item.has_enough ? 'covered' : 'missing'}`} key={`${item.name}-${item.unit}`}>
-                <div className="grocery-status-dot" />
+                <label className="grocery-bought-check" title={item.has_enough ? 'Already covered by your pantry' : `Mark ${item.name} as bought`}>
+                  <input
+                    type="checkbox"
+                    checked={item.has_enough}
+                    disabled={item.has_enough || Boolean(buyingItem)}
+                    onChange={() => markBought(item)}
+                    aria-label={item.has_enough ? `${item.name} is in your pantry` : `Mark ${item.name} as bought and add it to pantry`}
+                  />
+                  <span>{buyingItem === `${item.name}-${item.unit}` ? '…' : '✓'}</span>
+                </label>
 
                 <div>
                   <strong>{item.name}</strong>

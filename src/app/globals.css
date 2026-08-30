@@ -837,9 +837,17 @@ textarea { min-height: 88px; resize: vertical; }
 }
 
 .smart-grocery-item {
-  grid-template-columns: 12px 1fr auto;
+  grid-template-columns: 30px 1fr auto;
   align-items: center;
 }
+
+.grocery-bought-check { position: relative; display: grid; width: 28px; height: 28px; place-items: center; cursor: pointer; }
+.grocery-bought-check input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.grocery-bought-check span { display: grid; width: 26px; height: 26px; place-items: center; border: 2px solid #31d66b; border-radius: 8px; background: #f7faf8; color: transparent; font-size: 14px; font-weight: 950; transition: background .15s ease, color .15s ease, transform .15s ease; }
+.grocery-bought-check:hover span { transform: scale(1.06); background: rgba(49,214,107,.12); }
+.grocery-bought-check input:focus-visible + span { outline: 3px solid rgba(49,214,107,.3); outline-offset: 2px; }
+.grocery-bought-check input:checked + span { background: #31d66b; color: #181c19; }
+.grocery-bought-check:has(input:disabled) { cursor: default; }
 
 .grocery-status-dot {
   width: 10px;
