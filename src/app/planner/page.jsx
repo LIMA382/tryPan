@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
+import MealDetailsModal from '@/components/MealDetailsModal';
 import { DAYS, SLOTS, addDays, addWeeks, formatWeekRange, getMonday } from '@/lib/date';
 import { buildPantryAwareGroceryList, ensureMealForPlanning, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
 import { buildSmartWeekPlan } from '@/lib/mealRecommendations.mjs';
@@ -45,6 +46,7 @@ function PlannerContent({ user }) {
   const [error, setError] = useState('');
   const [autoPlanning, setAutoPlanning] = useState(false);
   const [planPreview, setPlanPreview] = useState(null);
+  const [openMeal, setOpenMeal] = useState(null);
 
   const load = useCallback(async function load() {
     setLoading(true);
@@ -431,7 +433,7 @@ function PlannerContent({ user }) {
                                   const count = plan.servings?.[`${key}:${meal.id}`] || plan.servings?.[key] || 1;
                                   return <div className="mobile-slot-meal mobile-photo-meal" style={{ backgroundImage: `linear-gradient(90deg, rgba(24,28,25,.9), rgba(24,28,25,.42)), url("${recipeImageForMeal(meal)}")` }} key={meal.id}>
                                     <div>
-                                      <a href={`/recipes/${recipeSlug(meal.title)}`} onClick={(event) => event.stopPropagation()}><strong>{meal.title}</strong></a>
+                                      <a href={`/recipes/${recipeSlug(meal.title)}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpenMeal(meal); }}><strong>{meal.title}</strong></a>
                                       <small>{meal.prep_time} min · {price(servingPrice(meal, count))} for {count} {Number(count) === 1 ? 'portion' : 'portions'}</small>
                                       <div className="serving-stepper"><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div>
                                       <select className="mobile-move-meal" aria-label={`Move ${meal.title}`} defaultValue="" onClick={(event) => event.stopPropagation()} onChange={(event) => { const [targetDay, targetSlot] = event.target.value.split('|'); if (targetDay && targetSlot) movePlannedMeal(day, slot, targetDay, targetSlot, meal.id); event.target.value = ''; }}>
@@ -442,7 +444,7 @@ function PlannerContent({ user }) {
                                     <button type="button" className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button>
                                   </div>;
                                 })}
-                                <div className="mobile-add-another">＋ Tap to add selected meal</div>
+                                <div className="mobile-add-another">＋ Add another meal</div>
                               </div>
                             ) : (
                               <div className="mobile-empty-slot">
@@ -526,7 +528,7 @@ function PlannerContent({ user }) {
                                       event.dataTransfer.effectAllowed = 'move';
                                     }}
                                   >
-                                    <a href={`/recipes/${recipeSlug(meal.title)}`} draggable={false} onDragStart={(event) => event.preventDefault()} onClick={(event) => event.stopPropagation()}>
+                                    <a href={`/recipes/${recipeSlug(meal.title)}`} draggable={false} onDragStart={(event) => event.preventDefault()} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpenMeal(meal); }}>
                                       <strong>{meal.title}</strong>
                                       <small>{count} {Number(count) === 1 ? 'portion' : 'portions'} · {price(servingPrice(meal, count))}</small>
                                     </a>
@@ -585,6 +587,7 @@ function PlannerContent({ user }) {
           </section>
         </div>
       ) : null}
+      <MealDetailsModal meal={openMeal} onClose={() => setOpenMeal(null)} />
     </AppFrame>
   );
 }
