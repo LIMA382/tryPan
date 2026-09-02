@@ -141,7 +141,7 @@ function GroceryContent({ user }) {
           <strong>{formatWeekRange(weekStartDate)}</strong>
         </div>
         <button type="button" className="soft-btn" onClick={() => setWeekStartDate(getMonday())}>This week</button>
-        <button type="button" className="primary-btn" onClick={() => setWeekStartDate(addWeeks(getMonday(), 1))}>Next week →</button>
+        <button type="button" className="primary-btn" onClick={() => setWeekStartDate((current) => addWeeks(current, 1))}>Next week →</button>
       </div>
 
       <div className="grocery-summary panel-soft smart-grocery-summary">

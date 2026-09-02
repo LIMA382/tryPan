@@ -160,12 +160,12 @@ function AccountContent({ user }) {
 
           <div className="field">
             <label htmlFor="new-password">New password</label>
-            <input id="new-password" name="newPassword" type="password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" />
+            <input id="new-password" name="newPassword" type="password" autoComplete="new-password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" />
           </div>
 
           <div className="field">
             <label htmlFor="confirm-new-password">Confirm new password</label>
-            <input id="confirm-new-password" name="confirmNewPassword" type="password" minLength={6} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="••••••••" />
+            <input id="confirm-new-password" name="confirmNewPassword" type="password" autoComplete="new-password" minLength={6} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="••••••••" />
           </div>
 
           <button type="submit" className="primary-btn" disabled={saving}>{saving ? 'Saving…' : 'Update password'}</button>
