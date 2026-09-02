@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
+import MealDetailsModal from '@/components/MealDetailsModal';
 import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPantryTripsForUser, loadPlanForUser, rankMeals, suggestMealsFromPantry } from '@/lib/dataStore';
 import { DAYS } from '@/lib/date';
 import { defaultStudentSettings, loadStudentProgress, loadStudentSettings, saveStudentSettings, toggleStudentChallenge } from '@/lib/studentStore';
@@ -20,6 +21,7 @@ function StudentContent({ user }) {
   const [mealIdeas, setMealIdeas] = useState([]);
   const [ideaSource, setIdeaSource] = useState('local');
   const [asking, setAsking] = useState(false);
+  const [openMeal, setOpenMeal] = useState(null);
 
   const load = useCallback(async () => {
     setSettings(loadStudentSettings());
@@ -132,14 +134,14 @@ function StudentContent({ user }) {
 
           <section className="panel-soft meal-assistant">
             <div className="card-header"><div><span className="student-kicker">Dinner decision</span><h3>What should I eat?</h3><p>Three choices based on your pantry, time and budget.</p></div><button type="button" className="primary-btn" onClick={askWhatToEat} disabled={asking}>{asking ? 'Thinking…' : mealIdeas.length ? 'Give me 3 new picks' : 'Choose 3 meals'}</button></div>
-            {mealIdeas.length ? <><div className="assistant-grid">{mealIdeas.map((idea, index) => <article className="assistant-card" key={`${idea.title}-${index}`}><span className="assistant-number">{index + 1}</span><div><h4>{idea.title}</h4><p>{idea.reason}</p><small>{idea.prepTime} min · {idea.pantryMatch}</small>{idea.missing?.length ? <div className="assistant-missing">Missing: {idea.missing.join(', ')}</div> : <div className="assistant-ready">You have everything needed</div>}{idea.mealId && <Link href={`/recipes/${idea.mealId}`}>Open recipe →</Link>}</div></article>)}</div><small className="assistant-source">{ideaSource === 'openai' ? 'Personalized by OpenAI using only the pantry and preferences shown here.' : 'Calculated privately in tryPan. Connect OpenAI for more creative picks.'}</small></> : <p className="assistant-empty">Tap the button when you do not want to decide from scratch.</p>}
+            {mealIdeas.length ? <><div className="assistant-grid">{mealIdeas.map((idea, index) => { const meal = data.meals.find((item) => String(item.id) === String(idea.mealId)) || data.meals.find((item) => item.title.toLowerCase() === idea.title.toLowerCase()); return <article className="assistant-card" key={`${idea.title}-${index}`}><span className="assistant-number">{index + 1}</span><div><h4>{idea.title}</h4><p>{idea.reason}</p><small>{idea.prepTime} min · {idea.pantryMatch}</small>{idea.missing?.length ? <div className="assistant-missing">Missing: {idea.missing.join(', ')}</div> : <div className="assistant-ready">You have everything needed</div>}{meal && <a href="#meal-details" onClick={(event) => { event.preventDefault(); setOpenMeal(meal); }}>Open recipe →</a>}</div></article>; })}</div><small className="assistant-source">{ideaSource === 'openai' ? 'Personalized by OpenAI using only the pantry and preferences shown here.' : 'Calculated privately in tryPan. Connect OpenAI for more creative picks.'}</small></> : <p className="assistant-empty">Tap the button when you do not want to decide from scratch.</p>}
           </section>
 
           <div className="student-main-grid">
             <section className="panel-soft student-card">
               <div className="card-header"><div><span className="student-kicker">Smart picks</span><h3>{settings.examMode ? 'Exam-week meals' : 'Quick meals between classes'}</h3></div><span className="badge">{summary.quickMeals.length} ideas</span></div>
               <div className="student-meal-list">
-                {summary.quickMeals.map((meal) => <Link href={`/recipes/${meal.id}`} key={meal.id}><div><strong>{meal.title}</strong><span>{meal.prep_time} min · {meal.servings || 1} servings</span></div><em>{money(meal.price)}</em></Link>)}
+                {summary.quickMeals.map((meal) => <a href="#meal-details" key={meal.id} onClick={(event) => { event.preventDefault(); setOpenMeal(meal); }}><div><strong>{meal.title}</strong><span>{meal.prep_time} min · {meal.servings || 1} servings</span></div><em>{money(meal.price)}</em></a>)}
                 {!summary.quickMeals.length && <p>Add a faster meal to your library to see it here.</p>}
               </div>
             </section>
@@ -147,7 +149,7 @@ function StudentContent({ user }) {
             <section className="panel-soft student-card">
               <div className="card-header"><div><span className="student-kicker">Pantry rescue</span><h3>Cook before buying more</h3></div><Link href="/plan/pantry">View pantry</Link></div>
               <div className="student-meal-list">
-                {summary.rescueMeals.map((meal) => <Link href={`/recipes/${meal.id}`} key={meal.id}><div><strong>{meal.title}</strong><span>{meal.pantry_matched} ingredients ready{meal.expiring_matches ? ` · uses ${meal.expiring_matches} soon` : ''}</span></div><em>{meal.pantry_coverage}%</em></Link>)}
+                {summary.rescueMeals.map((meal) => <a href="#meal-details" key={meal.id} onClick={(event) => { event.preventDefault(); setOpenMeal(meal); }}><div><strong>{meal.title}</strong><span>{meal.pantry_matched} ingredients ready{meal.expiring_matches ? ` · uses ${meal.expiring_matches} soon` : ''}</span></div><em>{meal.pantry_coverage}%</em></a>)}
                 {!summary.rescueMeals.length && <p>Add pantry items to unlock matching meals.</p>}
               </div>
             </section>
@@ -178,6 +180,7 @@ function StudentContent({ user }) {
           </div>
         </div>
       )}
+      <MealDetailsModal meal={openMeal} onClose={() => setOpenMeal(null)} />
     </AppFrame>
   );
 }
