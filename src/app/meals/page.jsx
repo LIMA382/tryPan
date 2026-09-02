@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
@@ -11,12 +11,11 @@ import MealForm from '@/components/MealForm';
 import MealDetailsModal from '@/components/MealDetailsModal';
 import { deleteMealForUser, loadAllVisibleMeals, loadMyMeals, loadProfileForUser, saveMealForUser } from '@/lib/dataStore';
 import { loadLibraryHistoryForUser } from '@/lib/libraryHistory';
-import { recipePath, recipeSlug } from '@/lib/recipeUtils';
+import { recipeSlug } from '@/lib/recipeUtils';
 import { hasSupabaseEnv } from '@/lib/supabaseClient';
 
 function MealsContent({ user }) {
   const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [meals, setMeals] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -94,10 +93,6 @@ function MealsContent({ user }) {
       return meal.meal_type === filter.toLowerCase() || meal.meal_type === 'both' || tagText.includes(filter.toLowerCase());
     });
   }, [tabMeals, filter]);
-
-  useEffect(() => {
-    visibleMeals.slice(0, 12).forEach((meal) => router.prefetch(recipePath(meal)));
-  }, [router, visibleMeals]);
 
   function startNewMeal() {
     setEditingMeal(null);
@@ -223,10 +218,10 @@ function MealsContent({ user }) {
               >
                 <MealCard
                   meal={meal}
-                  onOpen={() => router.push(recipePath(meal))}
+                  onOpen={() => setSelectedMeal(meal)}
                   actions={
                     <div className="meal-card-actions">
-                      <Link className="soft-btn" href={recipePath(meal)}>Open</Link>
+                      <button className="soft-btn" type="button" onClick={() => setSelectedMeal(meal)}>Open</button>
                       {meal.user_id === user.id || meals.some((item) => item.id === meal.id) ? <button className="soft-btn" onClick={() => startEditMeal(meal)}>Edit</button> : null}
                       {meal.user_id === user.id || meals.some((item) => item.id === meal.id) ? <button className="danger-btn" onClick={() => remove(meal.id)}>Delete</button> : null}
                     </div>
@@ -241,7 +236,7 @@ function MealsContent({ user }) {
       <MealDetailsModal
         meal={selectedMeal}
         onClose={() => setSelectedMeal(null)}
-        actions={selectedMeal ? (
+        actions={selectedMeal && (selectedMeal.user_id === user.id || meals.some((item) => item.id === selectedMeal.id)) ? (
           <div className="meal-card-actions">
             <button className="soft-btn" onClick={() => { startEditMeal(selectedMeal); setSelectedMeal(null); }}>Edit meal</button>
             <button className="danger-btn" onClick={() => { remove(selectedMeal.id); setSelectedMeal(null); }}>Delete</button>
