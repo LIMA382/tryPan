@@ -7,11 +7,13 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import MealDetailsModal from '@/components/MealDetailsModal';
 import { DAYS, SLOTS, addDays, addWeeks, formatWeekRange, getMonday } from '@/lib/date';
-import { buildPantryAwareGroceryList, ensureMealForPlanning, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
+import { buildPantryAwareGroceryList, consumePantryForMeal, ensureMealForPlanning, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
 import { buildSmartWeekPlan } from '@/lib/mealRecommendations.mjs';
 import { loadStudentSettings } from '@/lib/studentStore';
 import { plannedMealCost } from '@/lib/planMetrics.mjs';
 import { recipeImageForMeal, recipeSlug } from '@/lib/recipeUtils';
+import { completedMealKeys, plannedCompletionKey, recordMealCompletion } from '@/lib/mealCompletion.mjs';
+import { recordRecipeActivity } from '@/lib/libraryHistory';
 
 function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
@@ -47,6 +49,9 @@ function PlannerContent({ user }) {
   const [autoPlanning, setAutoPlanning] = useState(false);
   const [planPreview, setPlanPreview] = useState(null);
   const [openMeal, setOpenMeal] = useState(null);
+  const [completedKeys, setCompletedKeys] = useState(() => new Set());
+  const [completingKey, setCompletingKey] = useState('');
+  const [completionMessage, setCompletionMessage] = useState('');
 
   const load = useCallback(async function load() {
     setLoading(true);
@@ -75,6 +80,7 @@ function PlannerContent({ user }) {
     load();
   }, [load]);
   useEffect(() => { window.addEventListener('trypan:data-synced', load); return () => window.removeEventListener('trypan:data-synced', load); }, [load]);
+  useEffect(() => { setCompletedKeys(completedMealKeys(weekStartDate)); }, [weekStartDate]);
 
   const byId = useMemo(() => new Map(meals.map((meal) => [meal.id, meal])), [meals]);
 
@@ -83,7 +89,17 @@ function PlannerContent({ user }) {
     return Object.values(plan.slots || []).flatMap((ids) => Array.isArray(ids) ? ids : (ids ? [ids] : [])).map((id) => byId.get(id)).filter(Boolean);
   }, [plan, byId]);
 
-  const pantryAwareGrocery = useMemo(() => (plan ? buildPantryAwareGroceryList(meals, plan, pantryItems) : []), [meals, plan, pantryItems]);
+  const remainingPlan = useMemo(() => !plan ? plan : ({
+    ...plan,
+    slots: Object.fromEntries(Object.entries(plan.slots || {}).map(([key, ids]) => {
+      const separator = key.indexOf('-');
+      const day = key.slice(0, separator);
+      const slot = key.slice(separator + 1);
+      const remaining = slotMealIds(plan, key).filter((mealId) => !completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId })));
+      return [key, remaining];
+    })),
+  }), [plan, completedKeys, weekStartDate]);
+  const pantryAwareGrocery = useMemo(() => (remainingPlan ? buildPantryAwareGroceryList(meals, remainingPlan, pantryItems) : []), [meals, remainingPlan, pantryItems]);
   const grocery = useMemo(() => pantryAwareGrocery.filter((item) => Number(item.missing_quantity || 0) > 0).slice(0, 6), [pantryAwareGrocery]);
   const coveredItems = pantryAwareGrocery.filter((item) => item.has_enough).length;
 
@@ -215,6 +231,26 @@ function PlannerContent({ user }) {
 
   async function removeSlotMeal(day, slot, mealId) {
     setPlan(await setPlannedMealForUser(user, plan, day, slot, null, null, { mode: 'remove', removeMealId: mealId }));
+  }
+
+  async function markCooked(day, slot, meal, portions) {
+    const completionKey = plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id });
+    if (completedKeys.has(completionKey) || completingKey) return;
+    const count = Math.max(1, Number(portions || 1));
+    if (!window.confirm(`Mark ${meal.title} (${count} ${count === 1 ? 'portion' : 'portions'}) as cooked? This updates your pantry and weekly budget.`)) return;
+    setCompletingKey(completionKey); setCompletionMessage(''); setError('');
+    try {
+      await consumePantryForMeal(user, meal, count);
+      recordMealCompletion({ key: completionKey, meal, portions: count, weekStartDate, day, slot });
+      await recordRecipeActivity(user, meal, 'cooked').catch(() => null);
+      setCompletedKeys(completedMealKeys(weekStartDate));
+      setPantryItems(await loadPantryItemsForUser(user));
+      setCompletionMessage(`${meal.title} cooked — pantry and budget updated.`);
+    } catch (err) {
+      setError(err.message || 'Could not mark this meal as cooked.');
+    } finally {
+      setCompletingKey('');
+    }
   }
 
   async function changeServings(day, slot, mealId, change) {
@@ -436,6 +472,14 @@ function PlannerContent({ user }) {
                                       <a href={`/recipes/${recipeSlug(meal.title)}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpenMeal(meal); }}><strong>{meal.title}</strong></a>
                                       <small>{meal.prep_time} min · {price(servingPrice(meal, count))} for {count} {Number(count) === 1 ? 'portion' : 'portions'}</small>
                                       <div className="serving-stepper"><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div>
+                                      <button
+                                        type="button"
+                                        className={`mark-cooked-btn ${completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? 'done' : ''}`}
+                                        disabled={completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) || Boolean(completingKey)}
+                                        onClick={(event) => { event.stopPropagation(); markCooked(day, slot, meal, count); }}
+                                      >
+                                        {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : completingKey === plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id }) ? 'Updating…' : '✓ Mark cooked'}
+                                      </button>
                                       <select className="mobile-move-meal" aria-label={`Move ${meal.title}`} defaultValue="" onClick={(event) => event.stopPropagation()} onChange={(event) => { const [targetDay, targetSlot] = event.target.value.split('|'); if (targetDay && targetSlot) movePlannedMeal(day, slot, targetDay, targetSlot, meal.id); event.target.value = ''; }}>
                                         <option value="" disabled>Move to…</option>
                                         {DAYS.flatMap((targetDay) => SLOTS.map((targetSlot) => <option key={`${targetDay}-${targetSlot}`} value={`${targetDay}|${targetSlot}`} disabled={targetDay === day && targetSlot === slot}>{targetDay.slice(0, 3)} · {targetSlot}</option>))}
@@ -461,6 +505,8 @@ function PlannerContent({ user }) {
               })()}
             </div>
           </section>
+
+          {completionMessage ? <div className="notice success-notice cooked-toast" role="status">✓ {completionMessage}</div> : null}
 
           <section className="planner-board panel-soft">
             <div className="planner-board-header">
@@ -537,6 +583,14 @@ function PlannerContent({ user }) {
                                       <span>{count}</span>
                                       <button type="button" aria-label={`Use one more portion of ${meal.title}`} onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button>
                                     </div>
+                                    <button
+                                      type="button"
+                                      className={`calendar-cooked-btn ${completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? 'done' : ''}`}
+                                      disabled={completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) || Boolean(completingKey)}
+                                      onClick={(event) => { event.stopPropagation(); markCooked(day, slot, meal, count); }}
+                                    >
+                                      {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : 'Cooked?'}
+                                    </button>
                                     <button className="mini-btn" aria-label={`Remove ${meal.title}`} onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button>
                                   </div>;
                                 })}</div>

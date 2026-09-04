@@ -6,9 +6,10 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import MealDetailsModal from '@/components/MealDetailsModal';
 import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUser, loadPantryTripsForUser, loadPlanForUser, rankMeals, suggestMealsFromPantry } from '@/lib/dataStore';
-import { DAYS } from '@/lib/date';
+import { DAYS, getMonday } from '@/lib/date';
 import { defaultStudentSettings, loadStudentProgress, loadStudentSettings, saveStudentSettings, toggleStudentChallenge } from '@/lib/studentStore';
 import { plannedMealCost } from '@/lib/planMetrics.mjs';
+import { completedMealKeys, completedMealSpend, plannedCompletionKey } from '@/lib/mealCompletion.mjs';
 
 const money = (value) => `€${Number(value || 0).toFixed(2)}`;
 
@@ -22,6 +23,8 @@ function StudentContent({ user }) {
   const [ideaSource, setIdeaSource] = useState('local');
   const [asking, setAsking] = useState(false);
   const [openMeal, setOpenMeal] = useState(null);
+  const [cookedSpend, setCookedSpend] = useState(0);
+  const [cookedKeys, setCookedKeys] = useState(() => new Set());
 
   const load = useCallback(async () => {
     setSettings(loadStudentSettings());
@@ -34,21 +37,44 @@ function StudentContent({ user }) {
   }, [user]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    const refreshCookedSpend = () => {
+      setCookedSpend(completedMealSpend(getMonday()));
+      setCookedKeys(completedMealKeys(getMonday()));
+    };
+    refreshCookedSpend();
+    window.addEventListener('storage', refreshCookedSpend);
+    window.addEventListener('trypan:meal-completed', refreshCookedSpend);
+    return () => {
+      window.removeEventListener('storage', refreshCookedSpend);
+      window.removeEventListener('trypan:meal-completed', refreshCookedSpend);
+    };
+  }, []);
 
   const summary = useMemo(() => {
     const byId = new Map(data.meals.map((meal) => [meal.id, meal]));
     const planned = Object.values(data.plan?.slots || {}).flatMap((ids) => Array.isArray(ids) ? ids : (ids ? [ids] : [])).map((id) => byId.get(id)).filter(Boolean);
     const planCost = plannedMealCost(data.meals, data.plan);
-    const grocery = buildPantryAwareGroceryList(data.meals, data.plan, data.pantry);
+    const remainingPlan = !data.plan ? data.plan : {
+      ...data.plan,
+      slots: Object.fromEntries(Object.entries(data.plan.slots || {}).map(([key, ids]) => {
+        const separator = key.indexOf('-');
+        const day = key.slice(0, separator);
+        const slot = key.slice(separator + 1);
+        const list = Array.isArray(ids) ? ids : (ids ? [ids] : []);
+        return [key, list.filter((mealId) => !cookedKeys.has(plannedCompletionKey({ weekStartDate: getMonday(), day, slot, mealId })))];
+      })),
+    };
+    const grocery = buildPantryAwareGroceryList(data.meals, remainingPlan, data.pantry);
     const missingCost = grocery.reduce((sum, item) => sum + Number(item.missing_cost || 0), 0);
     const coverage = grocery.length ? Math.round((grocery.filter((item) => item.has_enough).length / grocery.length) * 100) : 0;
     const quickLimit = settings.examMode ? Math.min(15, settings.maxPrepTime) : settings.maxPrepTime;
     const quickMeals = data.meals.filter((meal) => Number(meal.prep_time || 0) <= quickLimit).sort((a, b) => Number(a.price || 0) - Number(b.price || 0)).slice(0, 4);
     const rescueMeals = suggestMealsFromPantry(data.meals, data.pantry).slice(0, 4);
     return { planned, planCost, missingCost, coverage, quickMeals, rescueMeals };
-  }, [data, settings]);
+  }, [data, settings, cookedKeys]);
 
-  const budgetLeft = Number(settings.weeklyBudget || 0) - summary.missingCost;
+  const budgetLeft = Number(settings.weeklyBudget || 0) - cookedSpend - summary.missingCost;
   const challenges = [
     { id: 'plan-five', label: 'Plan 5 meals', done: summary.planned.length >= 5, detail: `${summary.planned.length}/5 planned` },
     { id: 'pantry-first', label: 'Use what you own', done: summary.coverage >= 50, detail: `${summary.coverage}% pantry coverage` },
@@ -114,7 +140,7 @@ function StudentContent({ user }) {
             <div>
               <span className="student-kicker">This week</span>
               <h3>{budgetLeft >= 0 ? `${money(budgetLeft)} left for groceries` : `${money(Math.abs(budgetLeft))} over your goal`}</h3>
-              <p>Your plan needs about {money(summary.missingCost)} after checking the pantry.</p>
+              <p>{money(cookedSpend)} used by cooked meals · about {money(summary.missingCost)} still needed after checking the pantry.</p>
             </div>
             <div className="budget-ring" style={{ '--progress': `${Math.min(100, Math.max(0, (summary.missingCost / Math.max(1, settings.weeklyBudget)) * 100))}%` }}>
               <strong>{summary.coverage}%</strong><span>covered</span>

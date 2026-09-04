@@ -589,6 +589,12 @@ textarea { min-height: 88px; resize: vertical; }
 .mobile-photo-meal .serving-stepper { background: rgba(247,250,248,.9); color: #181c19; }
 .mobile-move-meal { width: auto; max-width: 150px; margin-top: 7px; padding: 7px 28px 7px 10px; border: 1px solid rgba(247,250,248,.55); border-radius: 999px; background: rgba(247,250,248,.92); color: #181c19; font-size: 11px; font-weight: 800; }
 .mobile-photo-meal .mini-btn { align-self: flex-start; background: rgba(247,250,248,.92); color: #181c19; }
+.mark-cooked-btn { min-height: 34px; margin-top: 8px; padding: 7px 12px; border: 1px solid rgba(247,250,248,.65); border-radius: 999px; background: #31d66b; color: #181c19; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; }
+.mark-cooked-btn.done { background: rgba(247,250,248,.92); }
+.mark-cooked-btn:disabled { cursor: default; opacity: .82; }
+.calendar-cooked-btn { position: absolute; left: 8px; bottom: 7px; z-index: 2; min-height: 27px; padding: 4px 8px; border: 0; border-radius: 999px; background: #31d66b; color: #181c19; font: inherit; font-size: 10px; font-weight: 850; cursor: pointer; }
+.calendar-cooked-btn.done { background: rgba(247,250,248,.92); }
+.cooked-toast { position: sticky; top: 8px; z-index: 20; margin: 0 0 12px; box-shadow: 0 10px 28px rgba(24,28,25,.12); }
 .mobile-day-total { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 14px 16px; border-radius: 18px; background: rgba(49,214,107,.14); }
 .mobile-day-total span { color: var(--muted); font-size: 12px; font-weight: 800; }
 .mobile-day-total strong { color: var(--ink); font-size: 18px; }

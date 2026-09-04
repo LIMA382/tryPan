@@ -8,6 +8,8 @@ import AppFrame from '@/components/AppFrame';
 import { buildPantryConsumptionPreview, consumePantryForMeal, deletePantryItemForUser, loadAllVisibleMeals, loadPantryItemsForUser, saveLeftoversForUser, savePantryItemForUser, undoPantryConsumption } from '@/lib/dataStore';
 import { recipeSlug } from '@/lib/recipeUtils';
 import { recordRecipeActivity } from '@/lib/libraryHistory';
+import { recordMealCompletion, removeMealCompletion } from '@/lib/mealCompletion.mjs';
+import { getMonday } from '@/lib/date';
 
 function CookContent({ user }) {
   const { id } = useParams();
@@ -34,7 +36,8 @@ function CookContent({ user }) {
       const remaining = Math.max(0, Number(servingsCooked || 1) - Number(portionsEaten || 0));
       const leftoverBefore = pantry.find((item) => String(item.name).toLowerCase() === `leftover: ${meal.title}`.toLowerCase()) || null;
       const leftoverItem = remaining ? await saveLeftoversForUser(user, meal, remaining) : null;
-      setPantryUpdates(updates); setLeftovers(remaining); setUndoData({ updates, leftoverBefore, leftoverItem });
+      const completion = recordMealCompletion({ meal, portions: portionsEaten, weekStartDate: getMonday() });
+      setPantryUpdates(updates); setLeftovers(remaining); setUndoData({ updates, leftoverBefore, leftoverItem, completionId: completion?.id });
       await recordRecipeActivity(user, meal, 'cooked').catch(() => null); setDone(true);
     } catch (err) { setError(err.message || 'Could not update your pantry.'); }
     finally { setSaving(false); }
@@ -47,6 +50,7 @@ function CookContent({ user }) {
       await undoPantryConsumption(user, undoData.updates);
       if (undoData.leftoverBefore) await savePantryItemForUser(user, undoData.leftoverBefore);
       else if (undoData.leftoverItem?.id) await deletePantryItemForUser(user, undoData.leftoverItem.id);
+      removeMealCompletion(undoData.completionId);
       setDone(false); setReviewing(false); setUndoData(null); setPantry(await loadPantryItemsForUser(user));
     } catch (err) { setError(err.message || 'Could not undo the pantry update.'); }
     finally { setSaving(false); }
