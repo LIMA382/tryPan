@@ -1133,12 +1133,14 @@ export async function consumePantryForMeal(user, meal, servingsCooked = null) {
 
   const preview = buildPantryConsumptionPreview(meal, pantry, servingsCooked);
   for (const line of preview) {
-    const match = line.pantryItem;
-    if (!match) continue;
-    const remaining = line.remaining_quantity;
-    if (remaining <= 0.000001) await deletePantryItemForUser(user, match.id);
-    else await savePantryItemForUser(user, { ...match, quantity: remaining });
-    updates.push({ name: match.name, before: match.quantity, after: remaining, unit: match.unit, before_item: match });
+    const deductions = line.deductions || (line.pantryItem ? [{ pantryItem: line.pantryItem, before: line.pantryItem.quantity, after: line.remaining_quantity }] : []);
+    for (const deduction of deductions) {
+      const match = deduction.pantryItem;
+      const remaining = Number(deduction.after || 0);
+      if (remaining <= 0.000001) await deletePantryItemForUser(user, match.id);
+      else await savePantryItemForUser(user, { ...match, quantity: remaining });
+      updates.push({ name: match.name, before: deduction.before, after: remaining, unit: match.unit, before_item: match });
+    }
   }
 
   return updates;
@@ -1149,8 +1151,9 @@ export async function undoPantryConsumption(user, updates = []) {
   for (const update of updates) {
     const before = update.before_item || { name: update.name, quantity: update.before, unit: update.unit, category: 'Other' };
     const pantry = await loadPantryItemsForUser(user);
-    const current = pantry.find((item) => ingredientIdentityKey(item) === ingredientIdentityKey(before)
-      && compatibleUnitKey(item.unit) === compatibleUnitKey(before.unit));
+    const current = pantry.find((item) => before.id && item.id === before.id)
+      || pantry.find((item) => ingredientIdentityKey(item) === ingredientIdentityKey(before)
+        && compatibleUnitKey(item.unit) === compatibleUnitKey(before.unit));
     restored.push(await savePantryItemForUser(user, { ...before, id: current?.id || undefined, quantity: Number(before.quantity || update.before || 0) }));
   }
   return restored;

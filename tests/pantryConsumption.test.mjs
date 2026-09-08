@@ -30,3 +30,18 @@ test('combines duplicate recipe ingredient lines before deducting', () => {
   assert.equal(line.required_quantity, 300);
   assert.equal(line.remaining_quantity, 0.7);
 });
+
+test('consumes matching stock across more than one pantry entry', () => {
+  const oneEggMeal = { servings: 1, ingredients: [{ name: 'Eggs', quantity: 3, unit: 'units' }] };
+  const [line] = buildPantryConsumptionPreview(oneEggMeal, [
+    { id: 'older', name: 'Egg', quantity: 1, unit: 'unit' },
+    { id: 'newer', name: 'Eggs', quantity: 4, unit: 'units' },
+  ], 1);
+
+  assert.equal(line.status, 'ready');
+  assert.equal(line.available_quantity, 5);
+  assert.deepEqual(line.deductions.map(({ pantryItem, before, after }) => ({ id: pantryItem.id, before, after })), [
+    { id: 'older', before: 1, after: 0 },
+    { id: 'newer', before: 4, after: 2 },
+  ]);
+});
