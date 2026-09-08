@@ -1,6 +1,6 @@
 'use client';
-import { seedMeals, publicMeals } from './demoData';
-import { DAYS, SLOTS, getMonday } from './date';
+import { seedMeals, publicMeals } from './demoData.js';
+import { DAYS, SLOTS, getMonday } from './date.js';
 
 const MEALS_KEY = 'trypan.meals.v1';
 const PLAN_KEY = 'trypan.plan.v1';
@@ -38,14 +38,23 @@ export function emptyPlan() {
   DAYS.forEach(d => SLOTS.forEach(s => { slots[`${d}-${s}`] = []; }));
   return { week_start_date: getMonday(), slots, servings: {} };
 }
-export function setPlannedMeal(day, slot, mealId, servingCount = 1) {
+export function setPlannedMeal(day, slot, mealId, servingCount = 1, options = {}) {
   const plan = getPlan();
   const key = `${day}-${slot}`;
   const current = Array.isArray(plan.slots[key]) ? plan.slots[key] : (plan.slots[key] ? [plan.slots[key]] : []);
-  const slots = { ...plan.slots, [key]: mealId ? [...new Set([...current, mealId])] : [] };
+  const mode = options.mode || 'add';
+  const removeMealId = options.removeMealId || null;
+  const nextIds = mode === 'remove'
+    ? current.filter((id) => id !== removeMealId)
+    : mode === 'replace'
+      ? (mealId ? [mealId] : [])
+      : (mealId ? [...new Set([...current, mealId])] : current);
+  const slots = { ...plan.slots, [key]: nextIds };
   const servings = { ...(plan.servings || {}) };
   if (mealId) servings[`${key}:${mealId}`] = Math.max(1, Number(servingCount || servings[`${key}:${mealId}`] || 1));
-  else Object.keys(servings).filter((item) => item === key || item.startsWith(`${key}:`)).forEach((item) => delete servings[item]);
+  Object.keys(servings)
+    .filter((item) => item === key || (item.startsWith(`${key}:`) && !nextIds.includes(item.slice(key.length + 1))))
+    .forEach((item) => delete servings[item]);
   savePlan({ ...plan, slots, servings });
   return { ...plan, slots, servings };
 }

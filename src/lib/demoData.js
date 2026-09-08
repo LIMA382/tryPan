@@ -1,4 +1,4 @@
-import { studentRecipeExpansion } from './studentRecipeExpansion';
+import { studentRecipeExpansion } from './studentRecipeExpansion.js';
 
 export const seedMeals = [
   {
