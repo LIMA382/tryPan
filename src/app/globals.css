@@ -584,17 +584,29 @@ textarea { min-height: 88px; resize: vertical; }
 .mobile-slot-meals { display: grid; gap: 9px; min-width: 0; }
 .mobile-photo-meal { min-height: 116px; padding: 14px !important; align-items: flex-end !important; border: 0 !important; border-radius: 18px; background-position: center; background-size: cover; box-shadow: 0 12px 30px rgba(24,28,25,.18); }
 .mobile-photo-meal > div { align-self: flex-end; }
+.mobile-photo-meal > div:first-child { width: 100%; min-width: 0; }
 .mobile-photo-meal a { color: #f7faf8; text-decoration: none; }
 .mobile-photo-meal strong, .mobile-photo-meal small { color: #f7faf8 !important; text-shadow: 0 1px 5px rgba(24,28,25,.7); }
 .mobile-photo-meal .serving-stepper { background: rgba(247,250,248,.9); color: #181c19; }
 .mobile-move-meal { width: auto; max-width: 150px; margin-top: 7px; padding: 7px 28px 7px 10px; border: 1px solid rgba(247,250,248,.55); border-radius: 999px; background: rgba(247,250,248,.92); color: #181c19; font-size: 11px; font-weight: 800; }
 .mobile-photo-meal .mini-btn { align-self: flex-start; background: rgba(247,250,248,.92); color: #181c19; }
-.mark-cooked-btn { min-height: 34px; margin-top: 8px; padding: 7px 12px; border: 1px solid rgba(247,250,248,.65); border-radius: 999px; background: #31d66b; color: #181c19; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; }
+.mobile-meal-primary-actions { position: relative; display: flex; align-items: center; gap: 7px; margin-top: 9px; }
+.mobile-meal-primary-actions .serving-stepper { margin: 0; }
+.mark-cooked-btn { min-height: 36px; margin: 0; padding: 7px 12px; border: 1px solid rgba(247,250,248,.65); border-radius: 999px; background: #31d66b; color: #181c19; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; }
 .mark-cooked-btn.done { background: rgba(247,250,248,.92); }
 .mark-cooked-btn:disabled { cursor: default; opacity: .82; }
+.mobile-meal-more { position: relative; margin-left: auto; }
+.mobile-meal-more summary { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; background: rgba(247,250,248,.92); color: #181c19; cursor: pointer; font-size: 13px; font-weight: 900; letter-spacing: .08em; list-style: none; }
+.mobile-meal-more summary::-webkit-details-marker { display: none; }
+.mobile-meal-more[open] summary { background: #31d66b; }
+.mobile-meal-more > div { position: absolute; z-index: 12; right: 0; bottom: calc(100% + 8px); width: min(240px, calc(100vw - 76px)); padding: 12px; border: 1px solid rgba(247,250,248,.72); border-radius: 18px; background: rgba(247,250,248,.94); color: #181c19; box-shadow: 0 18px 48px rgba(24,28,25,.24); backdrop-filter: blur(20px) saturate(145%); }
+.mobile-meal-more label { display: grid; gap: 6px; color: #181c19; font-size: 11px; font-weight: 850; }
+.mobile-meal-more .mobile-move-meal { width: 100%; max-width: none; margin: 0; border-color: rgba(24,28,25,.1); background: #f7faf8; }
+.mobile-remove-meal { width: 100%; min-height: 38px; margin-top: 8px; border: 0; border-radius: 12px; background: rgba(24,28,25,.08); color: #181c19; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; }
 .calendar-cooked-btn { position: absolute; left: 8px; bottom: 7px; z-index: 2; min-height: 27px; padding: 4px 8px; border: 0; border-radius: 999px; background: #31d66b; color: #181c19; font: inherit; font-size: 10px; font-weight: 850; cursor: pointer; }
 .calendar-cooked-btn.done { background: rgba(247,250,248,.92); }
-.cooked-toast { position: sticky; top: 8px; z-index: 20; margin: 0 0 12px; box-shadow: 0 10px 28px rgba(24,28,25,.12); }
+.cooked-toast { position: sticky; top: 8px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; box-shadow: 0 10px 28px rgba(24,28,25,.12); }
+.cooked-toast button { min-height: 36px; padding: 6px 13px; border: 1px solid rgba(24,28,25,.12); border-radius: 999px; background: #f7faf8; color: #181c19; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; }
 .mobile-day-total { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding: 14px 16px; border-radius: 18px; background: rgba(49,214,107,.14); }
 .mobile-day-total span { color: var(--muted); font-size: 12px; font-weight: 800; }
 .mobile-day-total strong { color: var(--ink); font-size: 18px; }
@@ -602,6 +614,28 @@ textarea { min-height: 88px; resize: vertical; }
 .mobile-slot-card.multi-meal .mobile-slot-meal { padding-bottom: 8px; border-bottom: 1px solid color-mix(in srgb,var(--ink) 10%,transparent); }
 .mobile-add-another { padding: 7px 0; color: var(--muted); font-size: 11px; font-weight: 800; }
 .compact-slot-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; }
+
+/* Immediate physical feedback without delaying the action. */
+:where(button, [role='button'], .primary-btn, .soft-btn, .mobile-tab, .nav-tab) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+:where(button, [role='button'], .primary-btn, .soft-btn):active:not(:disabled) { transform: scale(.97); transition: transform 90ms ease-out; }
+:where(h1, h2) { font-optical-sizing: auto; letter-spacing: -.025em; }
+:where(h3, h4) { font-optical-sizing: auto; letter-spacing: -.012em; }
+:where(p, small, input, select, button) { font-optical-sizing: auto; }
+
+@media (prefers-reduced-transparency: reduce) {
+  :where(.nav-shell, .mobile-bottom-nav, .modal-backdrop, .mobile-meal-more > div, .ingredient-suggestions) {
+    backdrop-filter: none !important;
+  }
+  .nav-shell, .mobile-bottom-nav, .mobile-meal-more > div, .ingredient-suggestions { background: #f7faf8 !important; }
+}
+
+@media (prefers-contrast: more) {
+  :where(.nav-shell, .mobile-bottom-nav, .panel-soft, .card, .meal-modal, .mobile-meal-more > div) {
+    border: 2px solid #181c19 !important;
+    box-shadow: none !important;
+  }
+  :where(p, small, .muted) { color: #181c19 !important; }
+}
 
 
 .ingredient-select-button,
@@ -3176,7 +3210,7 @@ textarea:focus-visible,
 .lesson-trip-panel { overflow: hidden; padding: 0; background: #f7faf8; border: 2px solid rgba(24,28,25,.09); }
 .cleaner-pantry-layout:has(.lesson-trip-panel) { grid-template-columns: 1fr; }
 .cleaner-pantry-layout:has(.lesson-trip-panel) .pantry-current-panel { width: 100%; }
-.lesson-topline { display: flex; justify-content: space-between; gap: 16px; align-items: start; padding: 24px 24px 16px; }
+.lesson-topline { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; padding: 24px 24px 16px; }
 .lesson-label { display: block; margin-bottom: 5px; color: var(--brand-terracotta); font-size: 12px; font-weight: 950; letter-spacing: .1em; text-transform: uppercase; }
 .lesson-topline h3 { font-size: 27px; line-height: 1.05; }
 .lesson-region { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--brand-blue); color: white; font-weight: 950; }
@@ -3503,7 +3537,7 @@ textarea:focus-visible,
 .recipe-hero-copy { padding: clamp(10px, 3vw, 30px); }
 .recipe-cover-wrap { min-height: 480px; height: 100%; overflow: hidden; border-radius: 25px; }
 .recipe-cover { display: block; width: 100%; height: 100%; object-fit: cover; }
-.recipe-section-heading { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 16px; }
+.recipe-section-heading { display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; margin-bottom: 16px; }
 .recipe-section-heading > span { color: var(--muted); font-weight: 800; }
 .recipe-step-list { display: grid; gap: 13px; margin: 22px 0 0; padding: 0; list-style: none; }
 .recipe-step-list li { display: grid; grid-template-columns: 38px 1fr; gap: 13px; align-items: start; }

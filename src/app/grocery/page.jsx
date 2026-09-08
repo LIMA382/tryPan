@@ -13,6 +13,7 @@ import {
 } from '@/lib/dataStore';
 import { plannedMealCost } from '@/lib/planMetrics.mjs';
 import { addWeeks, formatWeekRange, getMonday } from '@/lib/date';
+import { MEAL_COMPLETIONS_STORAGE_KEY } from '@/lib/mealCompletion.mjs';
 
 function price(value) {
   return `€${Number(value || 0).toFixed(2)}`;
@@ -54,6 +55,11 @@ function GroceryContent({ user }) {
 
   useEffect(() => {
     load();
+  }, [load]);
+  useEffect(() => {
+    const refreshAfterCooking = (event) => { if (event.key === MEAL_COMPLETIONS_STORAGE_KEY) load(); };
+    window.addEventListener('storage', refreshAfterCooking);
+    return () => window.removeEventListener('storage', refreshAfterCooking);
   }, [load]);
 
   const pantryAwareList = useMemo(

@@ -4,7 +4,6 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import AppNav from './AppNav';
 import PlanSubnav from './PlanSubnav';
-import { motionTokens } from '@/lib/motion';
 import AppWarmup from './AppWarmup';
 
 export default function AppFrame({ user, title, subtitle, children, action, eyebrow = 'tryPan' }) {
@@ -19,9 +18,9 @@ export default function AppFrame({ user, title, subtitle, children, action, eyeb
       <motion.div
         key={pathname}
         className="page-shell app-layout no-sidebar"
-        initial={reduceMotion ? false : { opacity: 0, y: 5 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: reduceMotion ? 0 : motionTokens.fast, ease: motionTokens.ease }}
+        initial={reduceMotion ? false : { y: 5 }}
+        animate={{ y: 0 }}
+        transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 520, damping: 46, mass: 0.82 }}
       >
         <main className="main">
           {pathname?.startsWith('/plan') ? <PlanSubnav /> : null}

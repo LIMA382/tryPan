@@ -15,6 +15,7 @@ import {
   savePantryItemForUser,
   suggestMealsFromPantry,
 } from '@/lib/dataStore';
+import { MEAL_COMPLETIONS_STORAGE_KEY } from '@/lib/mealCompletion.mjs';
 
 const emptyItem = {
   ingredient_id: null,
@@ -95,6 +96,11 @@ function PantryContent({ user }) {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { window.addEventListener('trypan:data-synced', load); return () => window.removeEventListener('trypan:data-synced', load); }, [load]);
+  useEffect(() => {
+    const refreshAfterCooking = (event) => { if (event.key === MEAL_COMPLETIONS_STORAGE_KEY) load(); };
+    window.addEventListener('storage', refreshAfterCooking);
+    return () => window.removeEventListener('storage', refreshAfterCooking);
+  }, [load]);
 
   const pantryValue = useMemo(() => items.reduce((sum, item) => sum + estimatePantryItemValue(item), 0), [items]);
   const suggestedMeals = useMemo(() => suggestMealsFromPantry(meals, items), [meals, items]);

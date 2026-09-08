@@ -7,12 +7,12 @@ import AuthGate from '@/components/AuthGate';
 import AppFrame from '@/components/AppFrame';
 import MealDetailsModal from '@/components/MealDetailsModal';
 import { DAYS, SLOTS, addDays, addWeeks, formatWeekRange, getMonday } from '@/lib/date';
-import { buildPantryAwareGroceryList, consumePantryForMeal, ensureMealForPlanning, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry } from '@/lib/dataStore';
+import { buildPantryAwareGroceryList, consumePantryForMeal, ensureMealForPlanning, loadAllVisibleMeals, loadPantryItemsForUser, loadPlanForUser, saveSmartPlanForUser, setPlannedMealForUser, suggestMealsFromPantry, undoPantryConsumption } from '@/lib/dataStore';
 import { buildSmartWeekPlan } from '@/lib/mealRecommendations.mjs';
 import { loadStudentSettings } from '@/lib/studentStore';
 import { plannedMealCost } from '@/lib/planMetrics.mjs';
 import { recipeImageForMeal, recipeSlug } from '@/lib/recipeUtils';
-import { completedMealKeys, plannedCompletionKey, recordMealCompletion } from '@/lib/mealCompletion.mjs';
+import { completedMealKeys, plannedCompletionKey, recordMealCompletion, removeMealCompletion } from '@/lib/mealCompletion.mjs';
 import { recordRecipeActivity } from '@/lib/libraryHistory';
 
 function price(value) {
@@ -52,6 +52,7 @@ function PlannerContent({ user }) {
   const [completedKeys, setCompletedKeys] = useState(() => new Set());
   const [completingKey, setCompletingKey] = useState('');
   const [completionMessage, setCompletionMessage] = useState('');
+  const [undoCompletion, setUndoCompletion] = useState(null);
 
   const load = useCallback(async function load() {
     setLoading(true);
@@ -80,7 +81,7 @@ function PlannerContent({ user }) {
     load();
   }, [load]);
   useEffect(() => { window.addEventListener('trypan:data-synced', load); return () => window.removeEventListener('trypan:data-synced', load); }, [load]);
-  useEffect(() => { setCompletedKeys(completedMealKeys(weekStartDate)); }, [weekStartDate]);
+  useEffect(() => { setCompletedKeys(completedMealKeys(weekStartDate, user.id)); setUndoCompletion(null); }, [weekStartDate, user.id]);
 
   const byId = useMemo(() => new Map(meals.map((meal) => [meal.id, meal])), [meals]);
 
@@ -239,15 +240,36 @@ function PlannerContent({ user }) {
     const count = Math.max(1, Number(portions || 1));
     if (!window.confirm(`Mark ${meal.title} (${count} ${count === 1 ? 'portion' : 'portions'}) as cooked? This updates your pantry and weekly budget.`)) return;
     setCompletingKey(completionKey); setCompletionMessage(''); setError('');
+    let updates = [];
     try {
-      await consumePantryForMeal(user, meal, count);
-      recordMealCompletion({ key: completionKey, meal, portions: count, weekStartDate, day, slot });
+      updates = await consumePantryForMeal(user, meal, count);
+      recordMealCompletion({ key: completionKey, meal, portions: count, weekStartDate, day, slot, userId: user.id });
       await recordRecipeActivity(user, meal, 'cooked').catch(() => null);
-      setCompletedKeys(completedMealKeys(weekStartDate));
+      setCompletedKeys(completedMealKeys(weekStartDate, user.id));
       setPantryItems(await loadPantryItemsForUser(user));
+      setUndoCompletion({ key: completionKey, updates, title: meal.title });
       setCompletionMessage(`${meal.title} cooked — pantry and budget updated.`);
     } catch (err) {
+      if (updates.length) await undoPantryConsumption(user, updates).catch(() => null);
+      removeMealCompletion(completionKey);
       setError(err.message || 'Could not mark this meal as cooked.');
+    } finally {
+      setCompletingKey('');
+    }
+  }
+
+  async function undoCooked() {
+    if (!undoCompletion || completingKey) return;
+    setCompletingKey(undoCompletion.key); setError('');
+    try {
+      await undoPantryConsumption(user, undoCompletion.updates);
+      removeMealCompletion(undoCompletion.key);
+      setCompletedKeys(completedMealKeys(weekStartDate, user.id));
+      setPantryItems(await loadPantryItemsForUser(user));
+      setCompletionMessage(`${undoCompletion.title} was restored.`);
+      setUndoCompletion(null);
+    } catch (err) {
+      setError(err.message || 'Could not undo the pantry update.');
     } finally {
       setCompletingKey('');
     }
@@ -471,21 +493,28 @@ function PlannerContent({ user }) {
                                     <div>
                                       <a href={`/recipes/${recipeSlug(meal.title)}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); setOpenMeal(meal); }}><strong>{meal.title}</strong></a>
                                       <small>{meal.prep_time} min · {price(servingPrice(meal, count))} for {count} {Number(count) === 1 ? 'portion' : 'portions'}</small>
-                                      <div className="serving-stepper"><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div>
-                                      <button
-                                        type="button"
-                                        className={`mark-cooked-btn ${completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? 'done' : ''}`}
-                                        disabled={completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) || Boolean(completingKey)}
-                                        onClick={(event) => { event.stopPropagation(); markCooked(day, slot, meal, count); }}
-                                      >
-                                        {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : completingKey === plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id }) ? 'Updating…' : '✓ Mark cooked'}
-                                      </button>
-                                      <select className="mobile-move-meal" aria-label={`Move ${meal.title}`} defaultValue="" onClick={(event) => event.stopPropagation()} onChange={(event) => { const [targetDay, targetSlot] = event.target.value.split('|'); if (targetDay && targetSlot) movePlannedMeal(day, slot, targetDay, targetSlot, meal.id); event.target.value = ''; }}>
-                                        <option value="" disabled>Move to…</option>
-                                        {DAYS.flatMap((targetDay) => SLOTS.map((targetSlot) => <option key={`${targetDay}-${targetSlot}`} value={`${targetDay}|${targetSlot}`} disabled={targetDay === day && targetSlot === slot}>{targetDay.slice(0, 3)} · {targetSlot}</option>))}
-                                      </select>
+                                      <div className="mobile-meal-primary-actions">
+                                        <div className="serving-stepper" aria-label={`Portions of ${meal.title}`}><button type="button" aria-label="One fewer portion" disabled={Number(count) <= 1} onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, -1); }}>−</button><span>{count}</span><button type="button" aria-label="One more portion" onClick={(event) => { event.stopPropagation(); changeServings(day, slot, meal.id, 1); }}>+</button></div>
+                                        <button
+                                          type="button"
+                                          className={`mark-cooked-btn ${completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? 'done' : ''}`}
+                                          disabled={completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) || Boolean(completingKey)}
+                                          onClick={(event) => { event.stopPropagation(); markCooked(day, slot, meal, count); }}
+                                        >
+                                          {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : completingKey === plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id }) ? 'Updating…' : '✓ Mark cooked'}
+                                        </button>
+                                        <details className="mobile-meal-more" onClick={(event) => event.stopPropagation()}>
+                                          <summary aria-label={`More actions for ${meal.title}`}>•••</summary>
+                                          <div>
+                                            <label>Move meal<select className="mobile-move-meal" aria-label={`Move ${meal.title}`} defaultValue="" onChange={(event) => { const [targetDay, targetSlot] = event.target.value.split('|'); if (targetDay && targetSlot) movePlannedMeal(day, slot, targetDay, targetSlot, meal.id); event.target.value = ''; }}>
+                                              <option value="" disabled>Choose a slot…</option>
+                                              {DAYS.flatMap((targetDay) => SLOTS.map((targetSlot) => <option key={`${targetDay}-${targetSlot}`} value={`${targetDay}|${targetSlot}`} disabled={targetDay === day && targetSlot === slot}>{targetDay.slice(0, 3)} · {targetSlot}</option>))}
+                                            </select></label>
+                                            <button type="button" className="mobile-remove-meal" onClick={() => removeSlotMeal(day, slot, meal.id)}>Remove from plan</button>
+                                          </div>
+                                        </details>
+                                      </div>
                                     </div>
-                                    <button type="button" className="mini-btn" onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button>
                                   </div>;
                                 })}
                                 <div className="mobile-add-another">＋ Add another meal</div>
@@ -506,7 +535,7 @@ function PlannerContent({ user }) {
             </div>
           </section>
 
-          {completionMessage ? <div className="notice success-notice cooked-toast" role="status">✓ {completionMessage}</div> : null}
+          {completionMessage ? <div className="notice success-notice cooked-toast" role="status"><span>✓ {completionMessage}</span>{undoCompletion ? <button type="button" onClick={undoCooked} disabled={Boolean(completingKey)}>Undo</button> : null}</div> : null}
 
           <section className="planner-board panel-soft">
             <div className="planner-board-header">
@@ -589,7 +618,7 @@ function PlannerContent({ user }) {
                                       disabled={completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) || Boolean(completingKey)}
                                       onClick={(event) => { event.stopPropagation(); markCooked(day, slot, meal, count); }}
                                     >
-                                      {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : 'Cooked?'}
+                                      {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : '✓ Cook'}
                                     </button>
                                     <button className="mini-btn" aria-label={`Remove ${meal.title}`} onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button>
                                   </div>;

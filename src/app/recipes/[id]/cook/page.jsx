@@ -36,7 +36,7 @@ function CookContent({ user }) {
       const remaining = Math.max(0, Number(servingsCooked || 1) - Number(portionsEaten || 0));
       const leftoverBefore = pantry.find((item) => String(item.name).toLowerCase() === `leftover: ${meal.title}`.toLowerCase()) || null;
       const leftoverItem = remaining ? await saveLeftoversForUser(user, meal, remaining) : null;
-      const completion = recordMealCompletion({ meal, portions: portionsEaten, weekStartDate: getMonday() });
+      const completion = recordMealCompletion({ meal, portions: portionsEaten, weekStartDate: getMonday(), userId: user.id });
       setPantryUpdates(updates); setLeftovers(remaining); setUndoData({ updates, leftoverBefore, leftoverItem, completionId: completion?.id });
       await recordRecipeActivity(user, meal, 'cooked').catch(() => null); setDone(true);
     } catch (err) { setError(err.message || 'Could not update your pantry.'); }

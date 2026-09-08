@@ -9,7 +9,7 @@ import { buildPantryAwareGroceryList, loadAllVisibleMeals, loadPantryItemsForUse
 import { DAYS, getMonday } from '@/lib/date';
 import { defaultStudentSettings, loadStudentProgress, loadStudentSettings, saveStudentSettings, toggleStudentChallenge } from '@/lib/studentStore';
 import { plannedMealCost } from '@/lib/planMetrics.mjs';
-import { completedMealKeys, completedMealSpend, plannedCompletionKey } from '@/lib/mealCompletion.mjs';
+import { completedMealKeys, completedMealSpend, MEAL_COMPLETIONS_STORAGE_KEY, plannedCompletionKey } from '@/lib/mealCompletion.mjs';
 
 const money = (value) => `€${Number(value || 0).toFixed(2)}`;
 
@@ -38,9 +38,11 @@ function StudentContent({ user }) {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    const refreshCookedSpend = () => {
-      setCookedSpend(completedMealSpend(getMonday()));
-      setCookedKeys(completedMealKeys(getMonday()));
+    const refreshCookedSpend = (event) => {
+      if (event?.type === 'storage' && event.key !== MEAL_COMPLETIONS_STORAGE_KEY) return;
+      setCookedSpend(completedMealSpend(getMonday(), user.id));
+      setCookedKeys(completedMealKeys(getMonday(), user.id));
+      if (event?.type === 'storage') load();
     };
     refreshCookedSpend();
     window.addEventListener('storage', refreshCookedSpend);
@@ -49,7 +51,7 @@ function StudentContent({ user }) {
       window.removeEventListener('storage', refreshCookedSpend);
       window.removeEventListener('trypan:meal-completed', refreshCookedSpend);
     };
-  }, []);
+  }, [load, user.id]);
 
   const summary = useMemo(() => {
     const byId = new Map(data.meals.map((meal) => [meal.id, meal]));
@@ -79,7 +81,7 @@ function StudentContent({ user }) {
     { id: 'plan-five', label: 'Plan 5 meals', done: summary.planned.length >= 5, detail: `${summary.planned.length}/5 planned` },
     { id: 'pantry-first', label: 'Use what you own', done: summary.coverage >= 50, detail: `${summary.coverage}% pantry coverage` },
     { id: 'budget-week', label: 'Stay inside budget', done: budgetLeft >= 0 && summary.planned.length > 0, detail: `${money(Math.abs(budgetLeft))} ${budgetLeft >= 0 ? 'left' : 'over'}` },
-    { id: 'cook-one', label: 'Cook one planned meal', done: progress.completed.includes('cook-one'), detail: 'Tap when completed' },
+    { id: 'cook-one', label: 'Cook one planned meal', done: cookedSpend > 0 || progress.completed.includes('cook-one'), detail: cookedSpend > 0 ? `${money(cookedSpend)} cooked this week` : 'Mark a planned meal as cooked' },
   ];
   const completedCount = challenges.filter((challenge) => challenge.done || progress.completed.includes(challenge.id)).length;
 

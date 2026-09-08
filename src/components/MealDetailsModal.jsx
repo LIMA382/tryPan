@@ -29,16 +29,16 @@ export default function MealDetailsModal({ meal, onClose, actions, guest = false
   return (
     <AnimatePresence>
       {meal ? (
-        <motion.div className="modal-backdrop" initial={reduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={reduceMotion ? undefined : { opacity: 0 }} transition={{ duration: reduceMotion ? 0 : 0.18 }} onMouseDown={onClose}>
+        <motion.div className="modal-backdrop" initial={reduceMotion ? false : { backgroundColor: 'rgba(24,28,25,0)', backdropFilter: 'blur(0px)' }} animate={{ backgroundColor: 'rgba(24,28,25,.42)', backdropFilter: 'blur(8px)' }} exit={reduceMotion ? undefined : { backgroundColor: 'rgba(24,28,25,0)', backdropFilter: 'blur(0px)' }} transition={{ duration: reduceMotion ? 0 : 0.2 }} onMouseDown={onClose}>
           <motion.article
             className="meal-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="meal-modal-title"
             onMouseDown={(event) => event.stopPropagation()}
-            initial={reduceMotion ? false : { opacity: 0, y: 28, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={reduceMotion ? undefined : { opacity: 0, y: 16, scale: 0.99 }}
+            initial={reduceMotion ? false : { y: 28, scale: 0.985 }}
+            animate={{ y: 0, scale: 1 }}
+            exit={reduceMotion ? undefined : { y: 20, scale: 0.985 }}
             transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 430, damping: 36, mass: 0.82 }}
           >
             <button ref={closeButtonRef} type="button" className="modal-close" onClick={onClose} aria-label="Close meal details">×</button>
