@@ -476,11 +476,14 @@ function PlannerContent({ user }) {
                           <div
                             key={key}
                             className={`mobile-slot-card ${slotMeals.length ? 'filled multi-meal' : ''}`}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => placeSelectedMeal(day, slot)}
+                            role={slotMeals.length ? undefined : 'button'}
+                            tabIndex={slotMeals.length ? undefined : 0}
+                            onClick={() => { if (!slotMeals.length) placeSelectedMeal(day, slot); }}
                             onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') placeSelectedMeal(day, slot);
+                              if (!slotMeals.length && (event.key === 'Enter' || event.key === ' ')) {
+                                event.preventDefault();
+                                placeSelectedMeal(day, slot);
+                              }
                             }}
                           >
                             <span className="mobile-slot-name">{slot}</span>
@@ -576,7 +579,7 @@ function PlannerContent({ user }) {
                           onDragOver={(event) => { event.preventDefault(); setOver(key); }}
                           onDragLeave={() => setOver(null)}
                           onDrop={(event) => drop(day, slot, event)}
-                          onClick={() => placeSelectedMeal(day, slot)}
+                          onClick={() => { if (!slotMeals.length) placeSelectedMeal(day, slot); }}
                         >
                           <AnimatePresence mode="wait">
                             {slotMeals.length ? (

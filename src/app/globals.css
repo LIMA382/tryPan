@@ -637,6 +637,11 @@ textarea { min-height: 88px; resize: vertical; }
   :where(p, small, .muted) { color: #181c19 !important; }
 }
 
+@media (max-width: 760px) {
+  .mobile-bottom-nav { overflow: hidden; }
+  .mobile-bottom-nav .mobile-tab { min-width: 0; }
+}
+
 
 .ingredient-select-button,
 .ingredient-edit-button {
@@ -2700,7 +2705,7 @@ textarea { min-height: 88px; resize: vertical; }
     padding: 10px;
   }
 
-  .mobile-slot-card:active {
+  .mobile-slot-card:not(.filled):active {
     transform: scale(.992);
   }
 
@@ -3339,8 +3344,8 @@ textarea:focus-visible,
   .student-stat-grid article { padding: 15px; }
   .student-stat-grid strong { font-size: 22px; }
   .student-settings-grid { grid-template-columns: 1fr; }
-  .mobile-bottom-nav { overflow-x: auto; justify-content: flex-start; }
-  .mobile-bottom-nav .mobile-tab { min-width: 64px; }
+  .mobile-bottom-nav { overflow: hidden; }
+  .mobile-bottom-nav .mobile-tab { min-width: 0; }
 }
 
 /* Product architecture: contextual planning, library and recipe routes */
@@ -3403,9 +3408,9 @@ textarea:focus-visible,
 .ingredient-price-row label { display: grid; gap: 3px; }
 .ingredient-price-row label span { color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; }
 
-.offline-banner { position: fixed; z-index: 3000; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; align-items: center; gap: .7rem; padding: 10px 16px; border-radius: 999px; color: white; background: #181c19; box-shadow: var(--shadow-sm); font-weight: 800; }
+.offline-banner { position: fixed; z-index: 3000; left: 50%; bottom: max(100px, calc(92px + env(safe-area-inset-bottom))); transform: translateX(-50%); display: flex; align-items: center; gap: .7rem; padding: 10px 16px; border-radius: 999px; color: white; background: #181c19; box-shadow: var(--shadow-sm); font-weight: 800; }
 .offline-banner button { border: 0; border-radius: 999px; padding: .35rem .65rem; background: white; color: #181c19; font: inherit; cursor: pointer; }
-.install-app-button { position: fixed; z-index: 2500; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); border: 0; border-radius: 999px; padding: 12px 18px; background: var(--brand-terracotta); color: white; box-shadow: var(--shadow-sm); font: inherit; font-weight: 900; cursor: pointer; }
+.install-app-button { position: fixed; z-index: 2500; right: 16px; bottom: max(100px, calc(92px + env(safe-area-inset-bottom))); border: 0; border-radius: 999px; padding: 12px 18px; background: var(--brand-terracotta); color: white; box-shadow: var(--shadow-sm); font: inherit; font-weight: 900; cursor: pointer; }
 
 @media (max-width: 900px) {
   .desktop-nav-links .nav-tab { padding-inline: 9px; }

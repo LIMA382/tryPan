@@ -323,7 +323,6 @@ function PantryContent({ user }) {
                 <div className="field lesson-main-question supermarket-picker">
                   <label>Supermarket name</label>
                   <input
-                    autoFocus
                     role="combobox"
                     aria-label="Search supermarket"
                     aria-expanded={storeSuggestionsOpen}

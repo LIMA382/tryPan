@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import InstallPrompt from '@/components/InstallPrompt';
 import AppNav from '@/components/AppNav';
 import { getCuratedRecipes } from '@/lib/recipeCatalog';
 import { SITE_URL } from '@/lib/site';
@@ -29,7 +28,6 @@ export default function Home() {
 
   return (
     <>
-      <InstallPrompt />
       <AppNav />
       <main className="marketing-home">
         <section className="page-shell marketing-hero">
