@@ -31,6 +31,7 @@ const slotMealIds = (plan, key) => {
 function PlannerContent({ user }) {
   const searchParams = useSearchParams();
   const mealTrayRef = useRef(null);
+  const daySwipeStartRef = useRef(null);
   const [weekStartDate, setWeekStartDate] = useState(() => {
     const requestedWeek = searchParams.get('week');
     return /^\d{4}-\d{2}-\d{2}$/.test(requestedWeek || '') ? requestedWeek : getMonday();
@@ -209,6 +210,37 @@ function PlannerContent({ user }) {
     } finally {
       setOver(null);
     }
+  }
+
+  function moveMobileDay(direction) {
+    setMobileDayIndex((current) => {
+      const next = current + direction;
+      if (next < 0) {
+        setWeekStartDate((week) => addWeeks(week, -1));
+        return DAYS.length - 1;
+      }
+      if (next >= DAYS.length) {
+        setWeekStartDate((week) => addWeeks(week, 1));
+        return 0;
+      }
+      return next;
+    });
+  }
+
+  function beginDaySwipe(event) {
+    const touch = event.touches?.[0];
+    if (touch) daySwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function finishDaySwipe(event) {
+    const start = daySwipeStartRef.current;
+    const touch = event.changedTouches?.[0];
+    daySwipeStartRef.current = null;
+    if (!start || !touch) return;
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return;
+    moveMobileDay(deltaX < 0 ? 1 : -1);
   }
 
   async function drop(day, slot, event) {
@@ -453,7 +485,11 @@ function PlannerContent({ user }) {
               })}
             </div>
 
-            <div className="mobile-week-stack single-day">
+            <div
+              className="mobile-week-stack single-day"
+              onTouchStart={beginDaySwipe}
+              onTouchEnd={finishDaySwipe}
+            >
               {(() => {
                 const day = DAYS[mobileDayIndex] || DAYS[0];
                 const date = new Date(`${addDays(weekStartDate, mobileDayIndex)}T00:00:00`);
@@ -520,7 +556,17 @@ function PlannerContent({ user }) {
                                     </div>
                                   </div>;
                                 })}
-                                <div className="mobile-add-another">＋ Add another meal</div>
+                                <button
+                                  type="button"
+                                  className="mobile-add-another"
+                                  disabled={!selectedMeal}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    placeSelectedMeal(day, slot);
+                                  }}
+                                >
+                                  {selectedMeal ? `＋ Add ${selectedMeal.title}` : 'Select a meal above to add another'}
+                                </button>
                               </div>
                             ) : (
                               <div className="mobile-empty-slot">

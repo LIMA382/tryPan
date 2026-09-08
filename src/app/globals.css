@@ -612,7 +612,9 @@ textarea { min-height: 88px; resize: vertical; }
 .mobile-day-total strong { color: var(--ink); font-size: 18px; }
 .mobile-slot-card.multi-meal { align-items: start; }
 .mobile-slot-card.multi-meal .mobile-slot-meal { padding-bottom: 8px; border-bottom: 1px solid color-mix(in srgb,var(--ink) 10%,transparent); }
-.mobile-add-another { padding: 7px 0; color: var(--muted); font-size: 11px; font-weight: 800; }
+.mobile-add-another { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px dashed rgba(247,250,248,.55); border-radius: 12px; background: rgba(247,250,248,.12); color: #f7faf8; font: inherit; font-size: 11px; font-weight: 800; text-align: left; }
+.mobile-add-another:disabled { cursor: default; opacity: .7; }
+.mobile-week-stack.single-day { touch-action: pan-y; }
 .compact-slot-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; }
 
 /* Immediate physical feedback without delaying the action. */
