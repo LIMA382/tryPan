@@ -27,6 +27,10 @@ export default function LoginPage() {
     if (params.get('mode') === 'signup') setMode('signup');
   }, []);
 
+  useEffect(() => {
+    document.title = isSignup ? 'Create your free account · tryPan' : 'Welcome back · tryPan';
+  }, [isSignup]);
+
   function safeReturnTo() {
     const requested = new URLSearchParams(window.location.search).get('returnTo') || '/app';
     return requested.startsWith('/') && !requested.startsWith('//') ? requested : '/app';
@@ -120,10 +124,10 @@ export default function LoginPage() {
         )}
 
         <div className="field"><label htmlFor="email">Email</label><input id="email" name="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" type="email" /></div>
-        <div className="field"><label htmlFor="password">Password</label><input id="password" name="password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" autoComplete={isSignup ? 'new-password' : 'current-password'} type="password" /></div>
+        <div className="field"><label htmlFor="password">Password</label><input id="password" name="password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter your password" autoComplete={isSignup ? 'new-password' : 'current-password'} type="password" /></div>
 
         {isSignup && (
-          <div className="field"><label htmlFor="confirm-password">Confirm password</label><input id="confirm-password" name="confirmPassword" required minLength={6} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="••••••••" autoComplete="new-password" type="password" /></div>
+          <div className="field"><label htmlFor="confirm-password">Confirm password</label><input id="confirm-password" name="confirmPassword" required minLength={6} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Re-enter your password" autoComplete="new-password" type="password" /></div>
         )}
 
         <button className="primary-btn full-width-btn" disabled={busy || !supabaseReady}>{busy ? 'Please wait…' : isSignup ? 'Sign up' : 'Log in'}</button>

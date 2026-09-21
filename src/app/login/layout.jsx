@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Create your free account',
-  description: 'Create a free tryPan account and build a pantry-aware weekly meal plan.',
+  title: 'Welcome back',
+  description: 'Log in to tryPan or create a free account to build a pantry-aware weekly meal plan.',
   robots: { index: false, follow: false },
 };
 

@@ -3,7 +3,7 @@
   --brand-blue: #31d66b;
   --brand-olive: #31d66b;
   --brand-deep-olive: #181c19;
-  --brand-terracotta: #31d66b;
+  --brand-terracotta: #ff2fb0;
   --bg: #f7faf8;
   --paper: #f7faf8;
   --ink: var(--brand-deep-olive);
@@ -963,7 +963,16 @@ textarea { min-height: 88px; resize: vertical; }
 
 .full-width-btn { width: 100%; justify-content: center; margin-top: 14px; }
 .login-secondary-btn { margin-top: 10px; }
-.login-switch-btn { margin-top: 12px; }
+.login-switch-btn {
+  margin-top: 12px;
+  width: 100%;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--green-2, #1f9d52);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.login-switch-btn:hover { color: var(--brand-terracotta); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -1506,8 +1515,8 @@ textarea { min-height: 88px; resize: vertical; }
   position: sticky;
   top: 0;
   z-index: 50;
-  background: transparent !important;
-  backdrop-filter: none !important;
+  background: linear-gradient(180deg, color-mix(in srgb,#f7faf8 88%,transparent), color-mix(in srgb,#f7faf8 42%,transparent) 60%, transparent);
+  backdrop-filter: blur(18px);
 }
 
 .nav-clean {
