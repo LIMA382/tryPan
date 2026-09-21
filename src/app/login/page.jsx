@@ -22,9 +22,12 @@ export default function LoginPage() {
   const supabaseReady = hasSupabaseEnv() && supabase;
   const isSignup = mode === 'signup';
 
+  const [authNotice, setAuthNotice] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('mode') === 'signup') setMode('signup');
+    if (params.get('notice') === 'auth-required') setAuthNotice(true);
   }, []);
 
   useEffect(() => {
@@ -117,6 +120,7 @@ export default function LoginPage() {
         <h1>{isSignup ? 'Build your first affordable week.' : 'Welcome back to your meal planner.'}</h1>
         {isSignup ? <p className="login-value-copy">Plan around your pantry, estimate the shop and keep leftovers useful. Free to start, with no credit card.</p> : null}
 
+        {authNotice && !message && <div className="notice">Please log in to continue.</div>}
         {message && <div className="notice">{message}</div>}
 
         {isSignup && (

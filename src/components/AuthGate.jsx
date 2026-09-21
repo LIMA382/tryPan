@@ -25,7 +25,10 @@ export default function AuthGate({ children }) {
     sessionRequest.then(({ data }) => {
       const sessionUser = data?.session?.user || null;
       cachedUser = sessionUser;
-      if (!sessionUser) router.replace('/login');
+      if (!sessionUser) {
+        const returnTo = `${window.location.pathname}${window.location.search}`;
+        router.replace(`/login?notice=auth-required&returnTo=${encodeURIComponent(returnTo)}`);
+      }
       setUser(sessionUser);
       setReady(true);
     });

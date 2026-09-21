@@ -540,7 +540,7 @@ function PlannerContent({ user }) {
                                           disabled={completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) || Boolean(completingKey)}
                                           onClick={(event) => { event.stopPropagation(); markCooked(day, slot, meal, count); }}
                                         >
-                                          {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : completingKey === plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id }) ? 'Updating…' : '✓ Mark cooked'}
+                                          {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : completingKey === plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id }) ? 'Updating…' : 'Mark cooked'}
                                         </button>
                                         <details className="mobile-meal-more" onClick={(event) => event.stopPropagation()}>
                                           <summary aria-label={`More actions for ${meal.title}`}>•••</summary>
@@ -667,7 +667,7 @@ function PlannerContent({ user }) {
                                       disabled={completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) || Boolean(completingKey)}
                                       onClick={(event) => { event.stopPropagation(); markCooked(day, slot, meal, count); }}
                                     >
-                                      {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : '✓ Cook'}
+                                      {completedKeys.has(plannedCompletionKey({ weekStartDate, day, slot, mealId: meal.id })) ? '✓ Cooked' : 'Mark cooked'}
                                     </button>
                                     <button className="mini-btn" aria-label={`Remove ${meal.title}`} onClick={(event) => { event.stopPropagation(); removeSlotMeal(day, slot, meal.id); }}>×</button>
                                   </div>;
